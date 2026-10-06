@@ -1,0 +1,44 @@
+<IfModule mod_negotiation.c>
+    Options -MultiViews -Indexes
+</IfModule>
+
+Options -Indexes
+
+
+<IfModule mod_rewrite.c>
+
+    RewriteEngine On
+
+    RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L,NC]
+
+    RewriteRule ^(?:\.env|\.env\..*|composer\.json|composer\.lock|package\.json|package-lock\.json|phpunit\.xml|phpunit\.xml\.dist|artisan)$ - [F,L,NC]
+
+
+    RewriteRule ^(?:\.git|\.svn|\.hg|\.bzr)(?:/|$) - [F,L,NC]
+
+
+    RewriteRule \.(?:bak|backup|old|orig|save|swp|swo|tmp|temp|sql|sqlite|log|ini|conf|yml|yaml)$ - [F,L,NC]
+
+
+    RewriteRule ^(?:uploads?|images?|image|member|files?|storage)/.*\.(?:php|php[0-9]?|phtml|pht|phar|cgi|pl|py|sh|bash|exe|bin|bat|cmd)$ - [F,L,NC]
+
+    RewriteRule \.(?:phtml|pht|phtm|phps|php[0-9]?|phar|cgi|pl|py|pyc|sh|bash|exe|bin|bat|cmd)$ - [F,L,NC]
+
+
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+
+</IfModule>
+
+
+<FilesMatch "\.(?:phtml|pht|phtm|phps|php[0-9]?|phar|cgi|pl|py|pyc|sh|bash|exe|bin|bat|cmd)$">
+    Require all denied
+</FilesMatch>
+
+<Files "index.php">
+    Require all granted
+</Files>
