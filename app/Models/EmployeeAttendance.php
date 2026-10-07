@@ -62,25 +62,31 @@ class EmployeeAttendance extends Model
             return $val;
         }
 
-        // 2. If it contains /storage/ from any host or relative path
+        // 2. Full HTTP(S) URL - preserve as-is (handle double slash fix)
+        if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
+            return str_replace('/storage//storage/', '/storage/', $val);
+        }
+
+        // 3. Path containing /storage/ (from any host or relative)
         if (str_contains($val, '/storage/')) {
             $parts = explode('/storage/', $val);
             $relativePath = end($parts);
             return asset('storage/' . ltrim($relativePath, '/'));
         }
 
-        // 3. Full HTTP(S) URL
-        if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
-            return str_replace('/storage//storage/', '/storage/', $val);
-        }
-
-        // 4. Relative storage path
+        // 4. Path starting with storage/ (relative)
         $trimmed = ltrim($val, '/');
         if (str_starts_with($trimmed, 'storage/')) {
             return asset($trimmed);
         }
 
-        return asset('storage/' . $trimmed);
+        // 5. Relative path like attendance_selfies/filename - prepend storage/
+        // This handles paths stored as just "attendance_selfies/filename.png"
+        if ($trimmed !== '') {
+            return asset('storage/' . $trimmed);
+        }
+
+        return null;
     }
 
     public function getCheckInSelfieUrlAttribute(): ?string

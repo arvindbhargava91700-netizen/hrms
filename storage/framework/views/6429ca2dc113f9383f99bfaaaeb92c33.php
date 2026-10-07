@@ -297,7 +297,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                                 </h3>
                                 <?php
-                                    $inSelfie = $todayAttendance ? ($todayAttendance->check_in_selfie_url ?: $todayAttendance->check_in_selfie) : null;
+                                    $inSelfie = $todayAttendance ? (\App\Models\EmployeeAttendance::formatImageUrl($todayAttendance->check_in_selfie ?? null)) : null;
                                 ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($inSelfie): ?>
                                     <div class="mt-2 d-flex align-items-center gap-2">
@@ -310,14 +310,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             </div>
                         </div>
                         <div class="col-sm-6">
-                            <div class="p-3 border rounded-3 position-relative overflow-hidden h-100 <?php echo e(($todayAttendance && $todayAttendance->check_out) ? 'bg-danger bg-opacity-10 border-danger' : 'bg-light'); ?>">
+                            <div class="p-3 border rounded-3 position-relative overflow-hidden h-100 <?php echo e(($todayAttendance && $todayAttendance->check_out) ? 'bg-danger bg-opacity-10 border-danger' : 'bg-light'); ?>>
                                 <p class="text-muted small text-uppercase fw-bold mb-1">Check Out Time</p>
                                 <h3 class="mb-0 <?php echo e(($todayAttendance && $todayAttendance->check_out) ? 'text-danger' : 'text-dark'); ?>">
                                     <?php echo e(($todayAttendance && $todayAttendance->check_out) ? \Carbon\Carbon::parse($todayAttendance->check_out)->format('h:i A') : '--:-- --'); ?>
 
                                 </h3>
                                 <?php
-                                    $outSelfie = $todayAttendance ? ($todayAttendance->check_out_selfie_url ?: $todayAttendance->check_out_selfie) : null;
+                                    $outSelfie = $todayAttendance ? (\App\Models\EmployeeAttendance::formatImageUrl($todayAttendance->check_out_selfie ?? null)) : null;
                                 ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($outSelfie): ?>
                                     <div class="mt-2 d-flex align-items-center gap-2">
