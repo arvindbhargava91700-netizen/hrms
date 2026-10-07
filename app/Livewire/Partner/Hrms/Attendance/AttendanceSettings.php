@@ -33,7 +33,7 @@ class AttendanceSettings extends Component
         ]);
 
         AttendanceChecklist::create([
-            'partner_id' => tap(auth()->id(), fn ($id) => abort_unless(!auth()->user()->isSuperAdmin() && $id, 403, 'Select a partner before creating partner-owned HRMS data.')),
+            'partner_id' => auth()->id(),
             'question' => $this->newQuestion,
             'mode' => $this->newMode,
             'is_active' => true,

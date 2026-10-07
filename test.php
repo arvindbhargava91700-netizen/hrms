@@ -1,8 +1,18 @@
 <?php
 require 'vendor/autoload.php';
-$tasks = \App\Models\EmployeeTask::take(3)->get();
-foreach ($tasks as $t) {
-    $s = $t->start_date ? : "NULL";
-    $e = $t->end_date ? : "NULL";
-    echo "ID: " . $t->id . " Title: " . $t->title . " start: " . $s . " end: " . $e . PHP_EOL;
-}
+$app = require_once 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+$admin = \App\Models\User::where('name', 'Admin')->first();
+$count = \App\Models\EmployeeAttendance::where('employee_id', $admin?->id)->count();
+echo "Attendance records for Admin: " . $count . PHP_EOL;
+
+$allEmployeesInAttendance = \App\Models\EmployeeAttendance::with('employee')->get()->pluck('employee.name')->unique();
+echo "Unique employees in attendance table: " . json_encode($allEmployeesInAttendance->toArray()) . PHP_EOL;
+
+
+
+
+
+

@@ -10,8 +10,12 @@ class PackageService
     /**
      * Get the active PartnerSubscription with its package and modules for a partner.
      */
-    public static function getActiveSubscription(string $partnerId): ?PartnerSubscription
+    public static function getActiveSubscription(?string $partnerId): ?PartnerSubscription
     {
+        if (empty($partnerId)) {
+            return null;
+        }
+
         return PartnerSubscription::with(['package.systemModules'])
             ->where('partner_id', $partnerId)
             ->where('status', 'active')
@@ -26,8 +30,12 @@ class PackageService
     /**
      * Get active package for a partner (shortcut).
      */
-    public static function getActivePackage(string $partnerId)
+    public static function getActivePackage(?string $partnerId)
     {
+        if (empty($partnerId)) {
+            return null;
+        }
+
         return static::getActiveSubscription($partnerId)?->package;
     }
 
@@ -35,8 +43,12 @@ class PackageService
      * Check if a partner has access to a module by slug.
      * If the package has no modules at all, access is granted to all (free-for-all mode).
      */
-    public static function hasModule(string $partnerId, string $moduleSlug): bool
+    public static function hasModule(?string $partnerId, string $moduleSlug): bool
     {
+        if (empty($partnerId)) {
+            return true;
+        }
+
         $subscription = static::getActiveSubscription($partnerId);
 
         // No active subscription → deny access to optional modules

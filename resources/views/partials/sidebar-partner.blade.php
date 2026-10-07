@@ -1,7 +1,6 @@
     <div class="nav-section-label">Main</div>
     @php
-        $dashboardRoute =
-            auth()->user()->role === 'employee' ? route('partner.hrms.dashboard') : route('partner.dashboard');
+        $dashboardRoute = route('partner.dashboard');
         $isDashboardActive = request()->routeIs('partner.dashboard') || request()->routeIs('partner.hrms.dashboard');
     @endphp
     <a href="{{ $dashboardRoute }}" class="nav-link {{ $isDashboardActive ? 'active' : '' }}">
@@ -565,7 +564,7 @@
                                                 <a class="nav-link {{ request()->routeIs('partner.hrms.leaves.balance') ? 'active' : '' }}"
                                                     href="{{ route('partner.hrms.leaves.balance') }}"
                                                     style="padding: 0.3rem 1rem; font-size: 0.8rem;">
-                                    <i class="bi bi-wallet me-2"></i> Leave Balance
+                                                      Leave Balance
                                                 </a>
                                             </li>
                                         @endif

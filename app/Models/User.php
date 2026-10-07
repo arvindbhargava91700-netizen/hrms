@@ -379,14 +379,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     public function getDashboardRouteAttribute(): string
     {
-        return match ($this->role) {
-            'super_admin', 'admin' => route('partner.dashboard'),
-            'partner' => $this->hasApprovedKyc()
-                ? route('partner.dashboard')
-                : route('partner.kyc'),
-            'employee' => route('partner.hrms.dashboard'),
-            default => route('login'), // Customers don't have web dash
-        };
+        return route('partner.dashboard');
     }
 
     public function manager()

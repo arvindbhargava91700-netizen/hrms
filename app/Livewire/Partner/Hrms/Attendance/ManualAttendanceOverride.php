@@ -204,6 +204,10 @@ class ManualAttendanceOverride extends Component
 
         // Get employees under this partner
         $employees = User::whereIn('id', $this->getTeamEmployeeIds('attendance_viewAny'))
+            ->whereNotIn('role', ['super_admin', 'admin'])
+            ->whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['super_admin', 'admin']);
+            })
             ->orderBy('name')
             ->get();
 

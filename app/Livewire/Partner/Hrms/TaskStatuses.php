@@ -101,17 +101,13 @@ class TaskStatuses extends Component
         $isCompleted = $this->is_completed || Str::contains(strtolower($this->name), ['complete', 'done', 'finish', 'closed']);
 
         $match = ['id' => $this->editingStatusId];
-        if (!auth()->user()->isSuperAdmin()) {
-            $match['partner_id'] = $this->getPartnerId();
-        } elseif (!$this->editingStatusId) {
-            $match['partner_id'] = $this->requirePartnerId();
-        }
+        $match['partner_id'] = $this->getPartnerId();
 
         TaskStatus::updateOrCreate(
             $match,
             [
                 'name'         => $this->name,
-                'slug'         => $slug,
+                'slug'         => Str::slug($this->name),
                 'color'        => $this->color,
                 'order'        => (int) $this->order,
                 'is_completed' => (bool) $isCompleted,

@@ -35,8 +35,13 @@ class ProductCategoryReport extends Component
 
     public function getBaseQuery()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        $query = ProductCategory::query()->when($partnerId, fn ($q) => $q->where('partner_id', $partnerId));
+        $user = auth()->user();
+        $query = ProductCategory::query();
+
+        if (!$user->isSuperAdmin() && !$user->isAdmin()) {
+            $partnerId = $user->isPartner() ? $user->id : $user->parent_id;
+            $query->where('partner_id', $partnerId);
+        }
 
         if ($this->search) {
             $query->where('name', 'like', '%'.$this->search.'%');

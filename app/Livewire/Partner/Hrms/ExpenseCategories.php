@@ -55,7 +55,7 @@ class ExpenseCategories extends Component
         $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
 
         $data = [
-            'partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')),
+            'partner_id' => $partnerId,
             'name' => $this->name,
             'type' => $this->type,
             'unit_name' => $this->type === 'per_unit' ? $this->unit_name : null,

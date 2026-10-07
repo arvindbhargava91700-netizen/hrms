@@ -94,6 +94,8 @@ class AttendanceCalendar extends Component
 
     $scopeIds = $this->getTeamEmployeeIds('attendance_viewAny');
     $employees = User::whereIn('id', $scopeIds)
+        ->whereNotIn('role', ['super_admin', 'admin'])
+        ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
         ->orderBy('name')
         ->get();
 

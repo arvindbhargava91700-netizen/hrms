@@ -22,7 +22,7 @@ class ApplyLeave extends Component
     {
         abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('leave_viewOwn'), 403);
         $partnerId = $this->getPartnerId();
-        $this->categories = LeaveCategory::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('status', true)->get();
+        $this->categories = LeaveCategory::where('status', true)->get();
         if ($this->categories->isNotEmpty()) {
             $this->leave_category_id = $this->categories->first()->id;
         }

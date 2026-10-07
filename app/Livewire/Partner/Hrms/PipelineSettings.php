@@ -75,7 +75,7 @@ class PipelineSettings extends Component
             $maxOrder = PipelineStage::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->max('order_index');
             
             PipelineStage::create([
-                'partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')),
+                'partner_id' => $partnerId,
                 'name' => $this->name,
                 'department_id' => $this->department_id,
                 'assigned_to' => $assignedTo,

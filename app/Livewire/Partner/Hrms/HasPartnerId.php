@@ -41,19 +41,24 @@ trait HasPartnerId
         $user = Auth::user();
 
         if ($user->isSuperAdmin()) {
-            return \App\Models\User::whereIn('role', ['partner', 'employee'])
+            return \App\Models\User::whereNotIn('role', ['super_admin', 'admin'])
+                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
                 ->pluck('id')
                 ->toArray();
         }
         
-        // If user specifically requested 'me' scope, return only current user
+        // If user specifically requested 'me' scope, return only current user (if not admin)
         if (request('scope') === 'me') {
-            return [$user->id];
+            return $user->isAdmin() ? [] : [$user->id];
         }
 
         // If user specifically requested 'team' scope and has team access
         if (request('scope') === 'team') {
-            return $user->getTeamIds();
+            return \App\Models\User::whereIn('id', $user->getTeamIds())
+                ->whereNotIn('role', ['super_admin', 'admin'])
+                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
+                ->pluck('id')
+                ->toArray();
         }
 
         // Partner, Admin, or User with viewAny permission sees ALL employees
@@ -62,6 +67,8 @@ trait HasPartnerId
                 $q->where('parent_id', $this->getPartnerId())
                   ->orWhere('id', $this->getPartnerId());
             })
+            ->whereNotIn('role', ['super_admin', 'admin'])
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
             ->pluck('id')
             ->toArray();
         }
@@ -73,16 +80,22 @@ trait HasPartnerId
                 return \App\Models\User::where('parent_id', $this->getPartnerId())
                     ->where('role', 'employee')
                     ->where('branch_id', $user->branch_id)
+                    ->whereNotIn('role', ['super_admin', 'admin'])
+                    ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
                     ->pluck('id')
                     ->toArray();
             }
 
             if ($user->canAccess($module . '_viewTeam') || $user->canAccess($module . '_viewteam')) {
-                return $user->getTeamIds();
+                return \App\Models\User::whereIn('id', $user->getTeamIds())
+                    ->whereNotIn('role', ['super_admin', 'admin'])
+                    ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
+                    ->pluck('id')
+                    ->toArray();
             }
             
             if ($user->canAccess($module . '_viewOwn') || $user->canAccess($module . '_viewown')) {
-                return [$user->id];
+                return $user->isAdmin() ? [] : [$user->id];
             }
         }
         
@@ -100,11 +113,22 @@ trait HasPartnerId
             $branchIds = \App\Models\User::where('parent_id', $this->getPartnerId())
                 ->where('role', 'employee')
                 ->where('branch_id', $user->branch_id)
+                ->whereNotIn('role', ['super_admin', 'admin'])
+                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
                 ->pluck('id')
                 ->toArray();
-            return array_unique(array_merge($teamIds, $branchIds));
+            $merged = array_unique(array_merge($teamIds, $branchIds));
+            return \App\Models\User::whereIn('id', $merged)
+                ->whereNotIn('role', ['super_admin', 'admin'])
+                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
+                ->pluck('id')
+                ->toArray();
         }
 
-        return $teamIds;
+        return \App\Models\User::whereIn('id', $teamIds)
+            ->whereNotIn('role', ['super_admin', 'admin'])
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
+            ->pluck('id')
+            ->toArray();
     }
 }

@@ -24,7 +24,7 @@
     /* Light mode */
     --bg-body: #F1F5F9;
     --bg-card: #FFFFFF;
-    --bg-sidebar: #0F172A;
+    --bg-sidebar: #05071e;
     --sidebar-text: #94A3B8;
     --sidebar-active: #2563EB;
     --text-primary: #0F172A;
@@ -35,7 +35,7 @@
 [data-theme="dark"] {
     --bg-body: #0F172A;
     --bg-card: #1E293B;
-    --bg-sidebar: #020617;
+    --bg-sidebar: #05071e;
     --sidebar-text: #64748B;
     --text-primary: #F1F5F9;
     --text-secondary: #94A3B8;

@@ -185,7 +185,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])->prefix('admin')->name('ad
 });
 
 // ── Partner & Staff routes ────────────────────────────────────────────
-Route::middleware(['auth', 'role:partner,employee,super_admin'])->prefix('workspace')->name('partner.')->group(function () {
+Route::middleware(['auth', 'role:partner,employee,super_admin,manager,admin'])->prefix('workspace')->name('partner.')->group(function () {
     Route::get('/kyc',          \App\Livewire\Partner\KycUpload::class)->name('kyc');
     Route::get('/tpi-kyc',      \App\Livewire\Partner\TpiKyc::class)->name('tpi-kyc');
 

@@ -106,7 +106,7 @@ class Settings extends Component
         ]);
 
         Holiday::create([
-            'partner_id' => tap($this->getPartnerId(), fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')),
+            'partner_id' => $this->getPartnerId(),
             'branch_id' => $this->holiday_branch_id ?: null,
             'name' => $this->holiday_name,
             'date' => $this->holiday_date,
@@ -143,7 +143,7 @@ class Settings extends Component
         ]);
 
         CommissionLevel::create([
-            'partner_id' => tap($this->getPartnerId(), fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')),
+            'partner_id' => $this->getPartnerId(),
             'level_name' => $this->level_name,
             'level_order' => $this->level_order,
             'commission_percent' => $this->commission_percent,
@@ -163,7 +163,7 @@ class Settings extends Component
         ]);
 
         PartnerSetting::updateOrCreate(
-            ['partner_id' => tap($this->getPartnerId(), fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'commission_tds_percent'],
+            ['partner_id' => $this->getPartnerId(), 'key' => 'commission_tds_percent'],
             ['value' => $this->commission_tds_percent]
         );
 
@@ -199,20 +199,20 @@ class Settings extends Component
 
         $partnerId = $this->getPartnerId();
 
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_company_name'], ['value' => $this->payslip_company_name]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_company_address'], ['value' => $this->payslip_company_address]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_authorized_signatory'], ['value' => $this->payslip_authorized_signatory]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_terms_conditions'], ['value' => $this->payslip_terms_conditions]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_company_name'], ['value' => $this->payslip_company_name]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_company_address'], ['value' => $this->payslip_company_address]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_authorized_signatory'], ['value' => $this->payslip_authorized_signatory]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_terms_conditions'], ['value' => $this->payslip_terms_conditions]);
 
         if ($this->new_payslip_logo) {
             $logoPath = $this->new_payslip_logo->store('payslips/logos', 'public');
-            PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_logo'], ['value' => $logoPath]);
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_logo'], ['value' => $logoPath]);
             $this->payslip_logo = $logoPath;
         }
 
         if ($this->new_payslip_signature) {
             $sigPath = $this->new_payslip_signature->store('payslips/signatures', 'public');
-            PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'payslip_signature'], ['value' => $sigPath]);
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_signature'], ['value' => $sigPath]);
             $this->payslip_signature = $sigPath;
         }
 
@@ -262,10 +262,10 @@ class Settings extends Component
 
         $partnerId = $this->getPartnerId();
 
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_attendance_weight'], ['value' => (string) $this->perf_attendance_weight]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_tasks_weight'], ['value' => (string) $this->perf_tasks_weight]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_merchant_target_weight'], ['value' => (string) $this->perf_merchant_target_weight]);
-        PartnerSetting::updateOrCreate(['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_monthly_target_weight'], ['value' => (string) $this->perf_monthly_target_weight]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'perf_attendance_weight'], ['value' => (string) $this->perf_attendance_weight]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'perf_tasks_weight'], ['value' => (string) $this->perf_tasks_weight]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'perf_merchant_target_weight'], ['value' => (string) $this->perf_merchant_target_weight]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'perf_monthly_target_weight'], ['value' => (string) $this->perf_monthly_target_weight]);
 
         $this->resetErrorBag('performance_sum');
         session()->flash('success_performance', 'Company Default performance score weights saved successfully! Total: 100 pts.');
@@ -354,7 +354,7 @@ class Settings extends Component
         ];
 
         PartnerSetting::updateOrCreate(
-            ['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_staff_overrides'],
+            ['partner_id' => $partnerId, 'key' => 'perf_staff_overrides'],
             ['value' => json_encode($overrides)]
         );
 
@@ -374,7 +374,7 @@ class Settings extends Component
             unset($overrides[$employeeId]);
 
             PartnerSetting::updateOrCreate(
-                ['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_staff_overrides'],
+                ['partner_id' => $partnerId, 'key' => 'perf_staff_overrides'],
                 ['value' => json_encode($overrides)]
             );
 
@@ -389,7 +389,7 @@ class Settings extends Component
 
         $partnerId = $this->getPartnerId();
         PartnerSetting::updateOrCreate(
-            ['partner_id' => tap($partnerId, fn ($id) => abort_unless($id, 403, 'Select a partner before creating partner-owned HRMS data.')), 'key' => 'perf_staff_overrides'],
+            ['partner_id' => $partnerId, 'key' => 'perf_staff_overrides'],
             ['value' => json_encode([])]
         );
 

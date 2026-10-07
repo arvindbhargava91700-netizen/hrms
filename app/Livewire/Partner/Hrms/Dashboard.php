@@ -27,10 +27,7 @@ class Dashboard extends Component
 
     public function mount(): void
     {
-        if (!auth()->user()->canAccessModule('hrms')) {
-            session()->flash('error', 'The HRMS module is not included in your current package. Please upgrade your plan.');
-            $this->redirect(route('partner.platform-plans'));
-        }
+        $this->redirect(route('partner.dashboard'));
     }
 
     public function render()

@@ -153,49 +153,46 @@ class EmployeeAttendance extends Component
         $viewTeam   = $user->canAccess('attendance_viewTeam');
 
         if ($viewAny) {
-            return [
-                'viewAny'     => true,
-                'viewBranch'  => false,
-                'viewTeam'    => false,
-                'employeeIds' => $this->getFilteredEmployeeIds('attendance_viewAny'),
-            ];
+            $employeeIds = collect($this->getFilteredEmployeeIds('attendance_viewAny'));
+        } elseif ($viewBranch) {
+            $branchUserIds = User::where(function ($q) use ($partnerId) {
+                if (!auth()->user()->isSuperAdmin()) {
+                    $q->where('parent_id', $partnerId);
+                }
+            })
+            ->where('role', 'employee')
+            ->where('branch_id', $user->branch_id)
+            ->pluck('id');
+
+            if (!$user->isAdmin()) {
+                $branchUserIds->push($user->id);
+            }
+
+            $employeeIds = $branchUserIds->unique()->values();
+        } elseif ($viewTeam) {
+            $teamIds = $user->getTeamIds();
+            if (!$user->isAdmin()) {
+                $teamIds = array_merge($teamIds, [$user->id]);
+            }
+            $employeeIds = collect(array_unique($teamIds));
+        } else {
+            // View Own (also the fallback for staff members without an explicit permission)
+            $employeeIds = $user->isAdmin() ? collect() : collect([$user->id]);
         }
 
-        if ($viewBranch) {
-            return [
-                'viewAny'     => false,
-                'viewBranch'  => true,
-                'viewTeam'    => false,
-                'employeeIds' => collect()
-                    ->merge(
-                        User::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('parent_id', $partnerId); } })
-                            ->where('role', 'employee')
-                            ->where('branch_id', $user->branch_id)
-                            ->pluck('id')
-                    )
-                    ->push($user->id)
-                    ->unique()
-                    ->values(),
-            ];
-        }
+        // Strictly exclude admin and super_admin from employee attendance
+        $adminIds = User::whereIn('role', ['super_admin', 'admin'])
+            ->orWhereHas('roles', fn ($q) => $q->whereIn('name', ['super_admin', 'admin']))
+            ->pluck('id')
+            ->toArray();
 
-        if ($viewTeam) {
-            return [
-                'viewAny'     => false,
-                'viewBranch'  => false,
-                'viewTeam'    => true,
-                'employeeIds' => collect(
-                    array_unique(array_merge($user->getTeamIds(), [$user->id]))
-                ),
-            ];
-        }
+        $employeeIds = $employeeIds->reject(fn ($id) => in_array($id, $adminIds))->values();
 
-        // View Own (also the fallback for staff members without an explicit permission)
         return [
-            'viewAny'     => false,
-            'viewBranch'  => false,
-            'viewTeam'    => false,
-            'employeeIds' => collect([$user->id]),
+            'viewAny'     => (bool) $viewAny,
+            'viewBranch'  => !$viewAny && (bool) $viewBranch,
+            'viewTeam'    => !$viewAny && !$viewBranch && (bool) $viewTeam,
+            'employeeIds' => $employeeIds,
         ];
     }
 
@@ -214,7 +211,11 @@ class EmployeeAttendance extends Component
         |--------------------------------------------------------------------------
         */
 
-        $query = EmployeeAttendanceModel::with(['employee.shift']);
+        $query = EmployeeAttendanceModel::with(['employee.shift'])
+            ->whereHas('employee', function ($q) {
+                $q->whereNotIn('role', ['super_admin', 'admin'])
+                  ->whereDoesntHave('roles', fn ($r) => $r->whereIn('name', ['super_admin', 'admin']));
+            });
 
         /*
         |--------------------------------------------------------------------------
@@ -607,7 +608,7 @@ class EmployeeAttendance extends Component
                         $employeeId
                     );
 
-                    if (!$employee || $employee->hasExitedOnOrBefore($virtualDate)) {
+                    if (!$employee || $employee->isAdmin() || in_array($employee->role, ['super_admin', 'admin']) || $employee->hasExitedOnOrBefore($virtualDate)) {
                         continue;
                     }
 

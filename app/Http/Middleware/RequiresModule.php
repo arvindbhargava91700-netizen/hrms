@@ -23,11 +23,18 @@ class RequiresModule
             return redirect()->route('login');
         }
 
-        // Check subscription for partner and employee roles
-        if (in_array($user->role, ['partner', 'employee'])) {
-            $partnerId = $user->role === 'employee' ? $user->parent_id : $user->id;
-            
-            $module = SystemModule::where('slug', $moduleSlug)->where('is_active', true)->first();
+        if ($user->isSuperAdmin() || $user->isAdmin()) {
+            return $next($request);
+        }
+
+        // Check subscription for partner, employee and manager roles
+        $partnerId = $user->isPartner() ? $user->id : $user->parent_id;
+
+        if (empty($partnerId)) {
+            return $next($request);
+        }
+
+        $module = SystemModule::where('slug', $moduleSlug)->where('is_active', true)->first();
             
             if (!$module) {
                 if ($user->role === 'partner') {
@@ -58,7 +65,6 @@ class RequiresModule
                 }
                 abort(403, 'Your organization does not have access to this module under its current plan.');
             }
-        }
 
         return $next($request);
     }

@@ -22,21 +22,27 @@ class RequireActiveSubscription
             return redirect()->route('login');
         }
 
-        if (in_array($user->role, ['partner', 'employee'])) {
-            $partnerId = $user->role === 'employee' ? $user->parent_id : $user->id;
-            
-            $subscription = PackageService::getActiveSubscription($partnerId);
+        if ($user->isSuperAdmin() || $user->isAdmin()) {
+            return $next($request);
+        }
 
-            if (!$subscription) {
-                if ($user->role === 'partner') {
-                    // Exclude some routes from redirecting to prevent loops
-                    if (!$request->routeIs('partner.platform-plans')) {
-                        return redirect()->route('partner.platform-plans')
-                            ->with('error', 'Your subscription has expired or is inactive. Please renew your package to access all features.');
-                    }
-                } else {
-                    abort(403, 'The organization subscription is inactive. Please contact the administrator.');
+        $partnerId = $user->isPartner() ? $user->id : $user->parent_id;
+
+        if (empty($partnerId)) {
+            return $next($request);
+        }
+
+        $subscription = PackageService::getActiveSubscription($partnerId);
+
+        if (!$subscription) {
+            if ($user->isPartner()) {
+                // Exclude some routes from redirecting to prevent loops
+                if (!$request->routeIs('partner.platform-plans') && !$request->routeIs('partner.subscription.callback')) {
+                    return redirect()->route('partner.platform-plans')
+                        ->with('error', 'Your subscription has expired or is inactive. Please renew your package to access all features.');
                 }
+            } else {
+                return $next($request);
             }
         }
 

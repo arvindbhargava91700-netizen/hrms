@@ -39,11 +39,15 @@ class Staff extends Component
     {
         $partnerId = $this->getPartnerId();
         
-        $query = User::with('roles', 'department', 'manager', 'branch', 'shift');
+        $query = User::with(['roles', 'department', 'manager', 'branch', 'shift'])
+            ->whereNotIn('role', ['super_admin', 'admin'])
+            ->whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['super_admin', 'admin']);
+            });
         $query = $this->applyHrmsFilters($query, 'id', 'staff_viewAny');
         $this->staff = $query->latest()->get();
         // Partner roles are namespaced
-        $this->roles = Role::where('name', '!=', 'super_admin')->get();
+        $this->roles = Role::whereNotIn('name', ['super_admin', 'admin'])->get();
         $this->departments = Department::orderBy('sort_order','asc')->get();
         $this->branches = \App\Models\HrmsBranch::all();
         $this->shifts = \App\Models\WorkShift::all();

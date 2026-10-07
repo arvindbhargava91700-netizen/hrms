@@ -1,8 +1,8 @@
 <div class="nav-section-label">Main</div>
 
 @if (auth()->user()?->hasApprovedKyc())
-    <a href="{{ route('partner.hrms.dashboard') }}"
-        class="nav-link {{ request()->routeIs('partner.hrms.dashboard') ? 'active' : '' }}">
+    <a href="{{ route('partner.dashboard') }}"
+        class="nav-link {{ request()->routeIs('partner.dashboard') || request()->routeIs('partner.hrms.dashboard') ? 'active' : '' }}">
         <i class="bi bi-grid-1x2"></i> <span>Dashboard</span>
     </a>
     <a href="{{ route('partner.profile') }}" class="nav-link {{ request()->routeIs('partner.profile') ? 'active' : '' }}">
