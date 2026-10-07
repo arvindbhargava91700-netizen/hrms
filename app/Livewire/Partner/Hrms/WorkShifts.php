@@ -86,11 +86,18 @@ class WorkShifts extends Component
                 $start = \Carbon\Carbon::createFromFormat('H:i', $this->start_time);
                 $end = \Carbon\Carbon::createFromFormat('H:i', $this->end_time);
                 
+                // If user entered 12-hour format like 02:00 meaning 2:00 PM (14:00)
                 if ($end->lt($start)) {
-                    $end->addDay();
+                    $end12 = $end->copy()->addHours(12);
+                    if ($end12->gt($start) && $start->diffInMinutes($end12) <= 720) {
+                        $end = $end12;
+                        $this->end_time = $end->format('H:i');
+                    } else {
+                        $end->addDay();
+                    }
                 }
 
-                $totalMins = $start->diffInMinutes($end);
+                $totalMins = (int) abs($start->diffInMinutes($end));
                 
                 $this->min_present_mins = $totalMins;
                 $this->min_half_day_mins = (int) round($totalMins / 2);
@@ -118,6 +125,20 @@ class WorkShifts extends Component
     {
         // abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('shift_manage'), 403);
         abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('shift_create'), 403);
+
+        // Auto-fix 12-hr to 24-hr before validation if user entered 02:00 for 2:00 PM
+        if ($this->start_time && $this->end_time) {
+            try {
+                $start = \Carbon\Carbon::createFromFormat('H:i', $this->start_time);
+                $end = \Carbon\Carbon::createFromFormat('H:i', $this->end_time);
+                if ($end->lt($start)) {
+                    $end12 = $end->copy()->addHours(12);
+                    if ($end12->gt($start) && $start->diffInMinutes($end12) <= 720) {
+                        $this->end_time = $end12->format('H:i');
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
 
         $this->validate([
             'name' => 'required|string|max:255',

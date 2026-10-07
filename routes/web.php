@@ -53,136 +53,7 @@ Route::post('/fcm-token', function (\Illuminate\Http\Request $request) {
     return response()->json(['status' => 'success']);
 })->name('fcm.token')->middleware('auth');
 
-// ── Admin routes ──────────────────────────────────────────────
-Route::middleware(['auth', 'role:super_admin,admin'])->prefix('admin')->name('admin.')->middleware('secure.upload')->group(function () {
-    Route::get('/profile', \App\Livewire\Profile::class)->name('profile');
 
-    Route::middleware('can:admin_dashboard')->group(function () {
-        Route::get('/dashboard', \App\Livewire\Admin\Dashboard::class)->name('dashboard');
-    });
-    
-    // Apna Job flow admin routes
-    Route::get('/job-templates', \App\Livewire\Admin\JobSettings\JobTemplatesComponent::class)->name('job-templates');
-    Route::get('/job-templates/create', \App\Livewire\Admin\JobSettings\JobTemplateFormComponent::class)->name('job-templates.create');
-    Route::get('/job-templates/{id}/edit', \App\Livewire\Admin\JobSettings\JobTemplateFormComponent::class)->name('job-templates.edit');
-    Route::get('/job-categories', \App\Livewire\Admin\JobSettings\JobCategoriesComponent::class)->name('job-categories');
-    Route::get('/job-plans', \App\Livewire\Admin\JobSettings\JobPlansComponent::class)->name('job-plans');
-    Route::get('/job-attributes', \App\Livewire\Admin\JobSettings\JobAttributesComponent::class)->name('job-attributes');
-    Route::get('/job-posts', \App\Livewire\Admin\JobSettings\AllJobPostsComponent::class)->name('job-posts');
-    Route::get('/job-posts/{jobPost:job_code}', \App\Livewire\Partner\Hrms\JobPostings\JobCandidatesComponent::class)->name('job-posts.view');
-    Route::get('/job-posts/{id}/edit', \App\Livewire\Partner\Hrms\JobPostings\JobPostFormComponent::class)->name('job-posts.edit');
-
-    Route::middleware('can:admin_system_modules')->group(function () {
-        Route::get('/system-modules', \App\Livewire\Admin\SystemModules::class)->name('system-modules');
-    });
-
-    Route::middleware('can:admin_system_settings')->group(function () {
-        Route::get('/system-settings', \App\Livewire\Admin\SystemSettings::class)->name('system-settings');
-        Route::get('/payment-gateway', \App\Livewire\Admin\PaymentGateway::class)->name('payment-gateway');
-    });
-
-    Route::middleware('can:admin_user_management')->group(function () {
-        Route::get('/partners', \App\Livewire\Admin\Partners::class)->name('partners');
-        Route::get('/customers', \App\Livewire\Admin\Customers::class)->name('customers');
-        Route::get('/customers/export', CustomerExportController::class)->name('customers.export');
-        Route::get('/customers/{id}', \App\Livewire\Admin\CustomerView::class)->name('customers.view');
-        Route::get('/custom-notifications', \App\Livewire\Admin\CustomNotifications::class)->name('custom-notifications');
-    });
-
-    Route::middleware('can:admin_staff_manage')->group(function () {
-        Route::get('/admin-staff', \App\Livewire\Admin\AdminStaff::class)->name('admin-staff');
-    });
-
-    Route::middleware('can:admin_operations_kyc')->group(function () {
-        Route::get('/kyc', \App\Livewire\Admin\KycVerification::class)->name('kyc');
-        Route::get('/kyc/{id}', \App\Livewire\Admin\KycVerificationView::class)->name('kyc.view');
-        Route::get('/customer-kyc', \App\Livewire\Admin\CustomerKycVerification::class)->name('customer-kyc');
-        Route::get('/customer-kyc/{id}', \App\Livewire\Admin\CustomerKycVerificationView::class)->name('customer-kyc.view');
-        Route::get('/kyc-fields', \App\Livewire\Admin\KycFields::class)->name('kyc.fields');
-        Route::get('/visits', \App\Livewire\Admin\Visits::class)->name('visits');
-        Route::get('/bookings', \App\Livewire\Admin\Bookings::class)->name('bookings');
-        Route::get('/attendance', \App\Livewire\Admin\Attendance::class)->name('attendance');
-    });
-
-    Route::middleware('can:admin_platform_content')->group(function () {
-        Route::get('/categories', \App\Livewire\Admin\Categories::class)->name('categories');
-        Route::get('/banners', \App\Livewire\Admin\Banners::class)->name('banners');
-        Route::get('/coupons', \App\Livewire\Admin\Coupons::class)->name('coupons');
-        Route::get('/listings', \App\Livewire\Admin\Listings::class)->name('listings');
-        Route::get('/listings/{id}', \App\Livewire\Admin\ListingDetails::class)->name('listing.details');
-        Route::get('/listings/{id}/edit', \App\Livewire\Partner\ManageListing::class)->name('listing.edit');
-        Route::get('/reviews', \App\Livewire\Admin\Reviews::class)->name('reviews');
-    });
-
-    Route::middleware('can:admin_finance_earnings')->group(function () {
-        Route::get('/subscriptions', \App\Livewire\Admin\Subscriptions::class)->name('subscriptions');
-        Route::get('/payments', \App\Livewire\Admin\Payments::class)->name('payments');
-        Route::get('/job-post-billing-history', \App\Livewire\Admin\JobPostBillingHistory::class)->name('job-post-billing-history');
-        Route::get('/invoices', \App\Livewire\Admin\Invoices::class)->name('invoices');
-        Route::get('/invoices/{type}/{id}/receipt', [\App\Http\Controllers\InvoiceReceiptController::class, 'show'])->name('invoices.receipt.show');
-        Route::get('/invoices/{type}/{id}/receipt/download', [\App\Http\Controllers\InvoiceReceiptController::class, 'download'])->name('invoices.receipt.download');
-        Route::get('/partner-packages', \App\Livewire\Admin\PartnerPackages::class)->name('partner-packages');
-        Route::get('/partner-subscriptions', \App\Livewire\Admin\PartnerSubscriptions::class)->name('partner-subscriptions');
-        Route::get('/reserve-histories', \App\Livewire\Admin\ReserveHistories::class)->name('reserve-histories');
-        Route::get('/withdrawals', \App\Livewire\Admin\Withdrawals::class)->name('withdrawals');
-        Route::get('/wallet-recharges', \App\Livewire\Admin\WalletRecharges::class)->name('wallet-recharges');
-        Route::get('/transaction-history', \App\Livewire\Admin\TransactionHistory::class)->name('transaction-history');
-    });
-
-    Route::middleware('can:admin_reports')->group(function () {
-        Route::get('/reports', \App\Livewire\Admin\Reports::class)->name('reports');
-        Route::get('/export/{module}', AdminExportController::class)->name('export');
-        
-        Route::prefix('reports-module')->name('reports.')->group(function () {
-            Route::get('/partners', \App\Livewire\Admin\Reports\PartnerReport::class)->name('partners');
-            Route::get('/customers', \App\Livewire\Admin\Reports\CustomerReport::class)->name('customers');
-            Route::get('/listings', \App\Livewire\Admin\Reports\ListingReport::class)->name('listings');
-            Route::get('/subscriptions', \App\Livewire\Admin\Reports\SubscriptionReport::class)->name('subscriptions');
-            Route::get('/payments', \App\Livewire\Admin\Reports\PaymentReport::class)->name('payments');
-            Route::get('/partner-packages', \App\Livewire\Admin\Reports\PartnerPackageReport::class)->name('partner-packages');
-            Route::get('/transaction-ledger', \App\Livewire\Admin\Reports\TransactionLedgerReport::class)->name('transaction-ledger');
-            
-            // New General Reports
-            Route::get('/reviews', \App\Livewire\Admin\Reports\ReviewReport::class)->name('reviews');
-            Route::get('/visit-requests', \App\Livewire\Admin\Reports\VisitRequestReport::class)->name('visit-requests');
-            Route::get('/collections', \App\Livewire\Admin\Reports\CollectionReport::class)->name('collections');
-            Route::get('/occupancy', \App\Livewire\Admin\Reports\OccupancyReport::class)->name('occupancy');
-            Route::get('/business', \App\Livewire\Admin\Reports\BusinessReport::class)->name('business');
-        });
-    });
-
-    Route::middleware('can:admin_hrms_reports')->group(function () {
-        Route::prefix('hrms-reports')->name('hrms-reports.')->group(function () {
-            Route::get('/staff', \App\Livewire\Admin\Reports\Hrms\StaffReport::class)->name('staff');
-            Route::get('/attendance', \App\Livewire\Admin\Reports\Hrms\AttendanceReport::class)->name('attendance');
-            Route::get('/leaves', \App\Livewire\Admin\Reports\Hrms\LeaveReport::class)->name('leaves');
-            Route::get('/expenses', \App\Livewire\Admin\Reports\Hrms\ExpenseReport::class)->name('expenses');
-            Route::get('/tasks', \App\Livewire\Admin\Reports\Hrms\TaskReport::class)->name('tasks');
-            Route::get('/leads', \App\Livewire\Admin\Reports\Hrms\LeadReport::class)->name('leads');
-            Route::get('/orders', \App\Livewire\Admin\Reports\Hrms\OrderReport::class)->name('orders');
-            
-            // New HRMS Reports
-            Route::get('/payroll', \App\Livewire\Admin\Reports\Hrms\PayrollReport::class)->name('payroll');
-            Route::get('/recovery', \App\Livewire\Admin\Reports\Hrms\RecoveryReport::class)->name('recovery');
-            Route::get('/notice', \App\Livewire\Admin\Reports\Hrms\NoticeReport::class)->name('notice');
-            Route::get('/product-category', \App\Livewire\Admin\Reports\Hrms\ProductCategoryReport::class)->name('product-category');
-            Route::get('/product', \App\Livewire\Admin\Reports\Hrms\ProductReport::class)->name('product');
-            Route::get('/salary-management', \App\Livewire\Admin\Reports\Hrms\SalaryManagementReport::class)->name('salary-management');
-            Route::get('/commissions', \App\Livewire\Admin\Reports\Hrms\CommissionsReport::class)->name('commissions');
-            Route::get('/pip-report', \App\Livewire\Admin\Reports\Hrms\PipReport::class)->name('pip-report');
-            Route::get('/recruitment-report', \App\Livewire\Admin\Reports\Hrms\RecruitmentReport::class)->name('recruitment-report');
-            Route::get('/probation-report', \App\Livewire\Admin\Reports\Hrms\ProbationReport::class)->name('probation-report');
-            Route::get('/resignation-exit-report', \App\Livewire\Admin\Reports\Hrms\ExitReport::class)->name('resignation-exit-report');
-            Route::get('/documents-kyc-report', \App\Livewire\Admin\Reports\Hrms\DocumentReport::class)->name('documents-kyc-report');
-            Route::get('/grievance-discipline-report', \App\Livewire\Admin\Reports\Hrms\GrievanceReport::class)->name('grievance-discipline-report');
-            Route::get('/attrition-analytics', \App\Livewire\Admin\Reports\Hrms\AttritionReport::class)->name('attrition-analytics');
-            Route::get('/exit-reasons', \App\Livewire\Admin\Reports\Hrms\ExitReasonsReport::class)->name('exit-reasons');
-            Route::get('/employee-cost', \App\Livewire\Admin\Reports\Hrms\EmployeeCostReport::class)->name('employee-cost');
-            Route::get('/training-report', \App\Livewire\Admin\Reports\Hrms\TrainingReport::class)->name('training-report');
-            Route::get('/asset-report', \App\Livewire\Admin\Reports\Hrms\AssetReport::class)->name('asset-report');
-        });
-    });
-});
 
 // ── Partner & Staff routes ────────────────────────────────────────────
 Route::middleware(['auth', 'role:partner,employee,super_admin,manager,admin'])->prefix('workspace')->name('partner.')->group(function () {
@@ -266,8 +137,7 @@ Route::middleware(['auth', 'role:partner,employee,super_admin,manager,admin'])->
                 Route::get('/pipeline-settings', \App\Livewire\Partner\Hrms\PipelineSettings::class)->name('pipeline-settings');
                 
                 // Daily Work Reports
-                Route::get('/my-daily-reports', \App\Livewire\Employee\Hrms\DailyWorkReport::class)->name('my-daily-reports');
-                Route::get('/daily-reports-history', \App\Livewire\Employee\Hrms\DailyWorkReportHistory::class)->name('daily-reports-history');
+               
                 Route::get('/team-reports', \App\Livewire\Partner\Hrms\DailyWorkReports::class)->name('team-reports');
                 
                 //neeraj added 

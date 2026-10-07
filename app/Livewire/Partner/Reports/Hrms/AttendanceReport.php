@@ -6,12 +6,14 @@ use Livewire\Component;
 use App\Models\EmployeeAttendance;
 use App\Models\User;
 use App\Models\HrmsBranch;
+use App\Livewire\Partner\Hrms\HasPartnerId;
 use Carbon\Carbon;
 use Livewire\WithPagination;
 
 class AttendanceReport extends Component
 {
     use WithPagination;
+    use HasPartnerId;
 
     public $startDate;
     public $endDate;
@@ -81,34 +83,42 @@ class AttendanceReport extends Component
 
     public function getBaseQuery()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        
-        $query = EmployeeAttendance::whereHas('employee', function($q) use ($partnerId) {
-            $q->where('parent_id', $partnerId);
+        $allowedIds = $this->getTeamEmployeeIds('attendance_viewAny');
 
-            if ($this->branchId) {
-                $q->where('branch_id', $this->branchId);
-            }
+        $query = EmployeeAttendance::whereIn('employee_id', $allowedIds);
 
-            if ($this->teamId) {
-                $q->where('reporting_to', $this->teamId);
-            }
-
-            if ($this->selectedWorkingMode) {
-                $q->where('working_mode', $this->selectedWorkingMode);
-            }
-        });
-        
         if ($this->employeeId) {
             $query->where('employee_id', $this->employeeId);
+        } else {
+            if ($this->branchId || $this->teamId || $this->selectedWorkingMode) {
+                $query->whereHas('employee', function ($q) {
+                    if ($this->branchId) {
+                        $q->where('branch_id', $this->branchId);
+                    }
+                    if ($this->teamId) {
+                        $q->where('reporting_to', $this->teamId);
+                    }
+                    if ($this->selectedWorkingMode) {
+                        $q->where('working_mode', $this->selectedWorkingMode);
+                    }
+                });
+            }
         }
-        
+
         if ($this->statusFilter) {
-            $query->where('status', $this->statusFilter);
+            if ($this->statusFilter === 'present') {
+                $query->whereIn('status', ['punch_out', 'punch_in', 'present']);
+            } else {
+                $query->where('status', $this->statusFilter);
+            }
         }
 
         if ($this->startDate && $this->endDate) {
             $query->whereBetween('date', [$this->startDate, $this->endDate]);
+        } elseif ($this->startDate) {
+            $query->whereDate('date', '>=', $this->startDate);
+        } elseif ($this->endDate) {
+            $query->whereDate('date', '<=', $this->endDate);
         }
 
         return $query;
@@ -120,30 +130,53 @@ class AttendanceReport extends Component
     }
 
     /**
-     * Aggregate totals across the full filtered set (not just the current page).
+     * Aggregate totals across the full filtered set.
      */
     public function getReportSummaryProperty()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
+        $partnerId = $this->getPartnerId();
 
         $defaultRequiredMins = (function () use ($partnerId) {
-            $val = \App\Models\PartnerSetting::where('partner_id', $partnerId)
-                ->where('key', 'min_present_mins')
-                ->value('value');
+            $val = \App\Models\PartnerSetting::where('key', 'min_present_mins')->value('value');
 
             return $val !== null ? (int) $val : 480;
         })();
 
-        $rows = $this->getBaseQuery()->with('employee.shift')->get();
+        $rows = $this->getBaseQuery()->with(['employee.shift'])->get();
 
-        $totalMinutes = 0;
-        $requiredMinutes = 0;
-        $overtimeMinutes = 0;
+        $totalRecords = $rows->count();
+        $presentCount = 0;
+        $halfDayCount = 0;
+        $absentCount = 0;
+        $leaveCount = 0;
+        $lateCount = 0;
         $missedPunch = 0;
+        $totalMinutes = 0;
+        $productiveMinutes = 0;
+        $overtimeMinutes = 0;
 
         foreach ($rows as $r) {
-            $worked = (int) ($r->working_minutes ?? 0);
+            $st = strtolower($r->status ?? '');
 
+            if (in_array($st, ['punch_out', 'punch_in', 'present'])) {
+                $presentCount++;
+            } elseif ($st === 'half_day') {
+                $halfDayCount++;
+            } elseif ($st === 'absent') {
+                $absentCount++;
+            } elseif ($st === 'leave') {
+                $leaveCount++;
+            }
+
+            if (($r->late_minutes ?? 0) > 0 || $st === 'late') {
+                $lateCount++;
+            }
+
+            if ($r->check_in && !$r->check_out) {
+                $missedPunch++;
+            }
+
+            $worked = (int) ($r->working_minutes ?? 0);
             $totalMinutes += $worked;
 
             $shift = $r->employee->shift ?? null;
@@ -151,58 +184,50 @@ class AttendanceReport extends Component
                 ? (int) $shift->min_present_mins
                 : $defaultRequiredMins;
 
-            $requiredMinutes += $req;
+            $productive = min($worked, $req);
+            $productiveMinutes += $productive;
             $overtimeMinutes += max(0, $worked - $req);
-
-            if ($r->check_in && !$r->check_out) {
-                $missedPunch++;
-            }
         }
 
+        $avgWorkingMins = $totalRecords > 0 ? (int) round($totalMinutes / $totalRecords) : 0;
+
         return [
-            'defaultRequiredMins' => $defaultRequiredMins,
-            'totalHours'          => intdiv($totalMinutes, 60) . 'h ' . ($totalMinutes % 60) . 'm',
-            'productiveHours'     => intdiv($requiredMinutes, 60) . 'h ' . ($requiredMinutes % 60) . 'm',
-            'overtimeHours'       => intdiv($overtimeMinutes, 60) . 'h ' . ($overtimeMinutes % 60) . 'm',
+            'totalRecords'        => $totalRecords,
+            'presentCount'        => $presentCount,
+            'halfDayCount'        => $halfDayCount,
+            'absentCount'         => $absentCount,
+            'leaveCount'          => $leaveCount,
+            'lateCount'           => $lateCount,
             'missedPunch'         => $missedPunch,
+            'avgWorkingMins'      => $avgWorkingMins,
+            'totalHours'          => intdiv($totalMinutes, 60) . 'h ' . ($totalMinutes % 60) . 'm',
+            'productiveHours'     => intdiv($productiveMinutes, 60) . 'h ' . ($productiveMinutes % 60) . 'm',
+            'overtimeHours'       => intdiv($overtimeMinutes, 60) . 'h ' . ($overtimeMinutes % 60) . 'm',
+            'defaultRequiredMins' => $defaultRequiredMins,
         ];
     }
 
     public function getBranchesProperty()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        return HrmsBranch::where('partner_id', $partnerId)->where('status', 'active')->orderBy('name')->get();
+        $partnerId = $this->getPartnerId();
+        return HrmsBranch::where('status', 'active')->orderBy('name')->get();
     }
 
     public function getTeamsProperty()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        
-        $reportingQuery = User::where('parent_id', $partnerId)
-            ->where('role', 'employee')
-            ->whereNotNull('reporting_to');
-            
-        if ($this->branchId) {
-            $reportingQuery->where('branch_id', $this->branchId);
-        }
-        
-        $leadIds = $reportingQuery->pluck('reporting_to')->unique();
+        $allowedIds = $this->getTeamEmployeeIds('attendance_viewAny');
+        $leadIds = User::whereIn('id', $allowedIds)
+            ->whereNotNull('reporting_to')
+            ->pluck('reporting_to')
+            ->unique();
 
-        if ($leadIds->isNotEmpty()) {
-            return User::whereIn('id', $leadIds)->orderBy('name')->get();
-        }
-
-        return User::where('parent_id', $partnerId)
-            ->where('role', 'employee')
-            ->whereHas('reportees')
-            ->orderBy('name')
-            ->get();
+        return User::whereIn('id', $leadIds)->orderBy('name')->get();
     }
 
     public function getEmployeesProperty()
     {
-        $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        $query = User::where('parent_id', $partnerId)->where('role', 'employee');
+        $allowedIds = $this->getTeamEmployeeIds('attendance_viewAny');
+        $query = User::whereIn('id', $allowedIds);
 
         if ($this->branchId) {
             $query->where('branch_id', $this->branchId);
@@ -217,8 +242,9 @@ class AttendanceReport extends Component
 
     public function exportCsv()
     {
-        $data = $this->getBaseQuery()->with(['employee.branch', 'employee.reportingTo'])->latest('date')->get();
-        
+        $data = $this->getBaseQuery()->with(['employee.branch', 'employee.reportingTo', 'employee.shift'])->latest('date')->get();
+        $defaultReq = $this->reportSummary['defaultRequiredMins'];
+
         $headers = [
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=attendance_report.csv",
@@ -227,13 +253,19 @@ class AttendanceReport extends Component
             "Expires"             => "0"
         ];
         
-        $columns = ['Date', 'Emp Code', 'Employee', 'Branch', 'Team / Reporting Manager', 'Check In', 'Check Out', 'Working Mins', 'Late Mins', 'Status'];
+        $columns = ['Date', 'Emp Code', 'Employee', 'Branch', 'Team / Reporting Manager', 'Check In', 'Check Out', 'Working Mins', 'Late Mins', 'Status', 'Total Hours', 'Productive Hours', 'Overtime'];
         
-        $callback = function() use($data, $columns) {
+        $callback = function() use($data, $columns, $defaultReq) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
             
             foreach ($data as $row) {
+                $worked = (int) ($row->working_minutes ?? 0);
+                $shift = optional($row->employee)->shift;
+                $req = ($shift && $shift->min_present_mins) ? (int) $shift->min_present_mins : $defaultReq;
+                $prod = min($worked, $req);
+                $ov = max(0, $worked - $req);
+
                 fputcsv($file, [
                     $row->date ? Carbon::parse($row->date)->format('Y-m-d') : '',
                     optional($row->employee)->employee_code ?? substr(optional($row->employee)->id, 0, 8),
@@ -242,9 +274,12 @@ class AttendanceReport extends Component
                     optional(optional($row->employee)->reportingTo)->name ?: 'Direct / None',
                     $row->check_in ? \Carbon\Carbon::parse($row->check_in)->format('H:i:s') : '-',
                     $row->check_out ? \Carbon\Carbon::parse($row->check_out)->format('H:i:s') : '-',
-                    $row->working_minutes,
-                    $row->late_minutes,
-                    $row->status
+                    $row->working_minutes ?? 0,
+                    $row->late_minutes ?? 0,
+                    ucfirst(str_replace('_', ' ', $row->status ?? '')),
+                    intdiv($worked, 60) . 'h ' . ($worked % 60) . 'm',
+                    intdiv($prod, 60) . 'h ' . ($prod % 60) . 'm',
+                    intdiv($ov, 60) . 'h ' . ($ov % 60) . 'm'
                 ]);
             }
             fclose($file);

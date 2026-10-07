@@ -1700,7 +1700,7 @@ class ManageListing extends Component
 
                 'pageSubtitle' => 'Fill in your service details',
 
-                'sidebarLinks' => view($isAdmin ? 'partials.sidebar-admin' : 'partials.sidebar-partner'),
+                'sidebarLinks' => view('partials.sidebar-partner'),
 
             ]);
 

@@ -75,9 +75,12 @@
                     <label class="filter-label">Status</label>
                     <select class="form-select" wire:model.live="statusFilter">
                         <option value="">All Statuses</option>
-                        <option value="punch_in">Present (Punch In)</option>
-                        <option value="absent">Absent</option>
+                        <option value="present">Present (All)</option>
+                        <option value="punch_out">Present (Punch Out)</option>
+                        <option value="punch_in">In Office (Punch In)</option>
                         <option value="half_day">Half Day</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
                         <option value="leave">On Leave</option>
                     </select>
                 </div>
@@ -108,36 +111,48 @@
         </div>
     </div>
 
-    {{-- Summary --}}
+    {{-- Summary KPI Cards --}}
     <div class="row g-3 mb-4">
-        <div class="col-md-2 col-6">
-            <div class="report-stat-card card p-3 text-center">
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
                 <div class="text-muted small fw-bold text-uppercase mb-1">Total Records</div>
-                <div class="fw-bold fs-4 text-primary">{{ $reportData->total() }}</div>
+                <div class="fw-bold fs-4 text-primary">{{ $reportSummary['totalRecords'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">{{ $reportSummary['totalHours'] }} worked</div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
-            <div class="report-stat-card card p-3 text-center">
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
                 <div class="text-muted small fw-bold text-uppercase mb-1">Present</div>
-                <div class="fw-bold fs-4 text-success">{{ $reportData->filter(fn($r) => str_contains($r->status,'punch_in'))->count() }}</div>
+                <div class="fw-bold fs-4 text-success">{{ $reportSummary['presentCount'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">Avg: {{ $reportSummary['avgWorkingMins'] }}m</div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
-            <div class="report-stat-card card p-3 text-center">
-                <div class="text-muted small fw-bold text-uppercase mb-1">Avg Working Mins</div>
-                <div class="fw-bold fs-4 text-dark">{{ $reportData->count() ? round($reportData->avg('working_minutes')) : 0 }}</div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
+                <div class="text-muted small fw-bold text-uppercase mb-1">Half Day</div>
+                <div class="fw-bold fs-4 text-warning">{{ $reportSummary['halfDayCount'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">Partial work</div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
-            <div class="report-stat-card card p-3 text-center">
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
+                <div class="text-muted small fw-bold text-uppercase mb-1">Absent</div>
+                <div class="fw-bold fs-4 text-danger">{{ $reportSummary['absentCount'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">Under minimum</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
+                <div class="text-muted small fw-bold text-uppercase mb-1">On Leave</div>
+                <div class="fw-bold fs-4 text-info">{{ $reportSummary['leaveCount'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">Approved leave</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="report-stat-card card p-3 text-center border-0 shadow-sm rounded-3">
                 <div class="text-muted small fw-bold text-uppercase mb-1">Late Records</div>
-                <div class="fw-bold fs-4 text-danger">{{ $reportData->filter(fn($r) => $r->late_minutes > 0)->count() }}</div>
-            </div>
-        </div>
-        <div class="col-md-2 col-6">
-            <div class="report-stat-card card p-3 text-center">
-                <div class="text-muted small fw-bold text-uppercase mb-1">Missed Punch</div>
-                <div class="fw-bold fs-4 text-warning">{{ $reportSummary['missedPunch'] }}</div>
+                <div class="fw-bold fs-4 text-danger">{{ $reportSummary['lateCount'] }}</div>
+                <div class="text-muted" style="font-size: 0.72rem;">{{ $reportSummary['missedPunch'] }} missed punch</div>
             </div>
         </div>
     </div>
@@ -190,21 +205,40 @@
                         <td class="{{ $row->late_minutes > 0 ? 'text-danger fw-bold' : 'text-muted' }}">{{ $row->late_minutes ?? 0 }}</td>
                         <td>
                             @php
-                                $sc = str_contains($row->status,'punch_in') ? 'success' : (str_contains($row->status,'absent') ? 'danger' : 'warning');
+                                $st = strtolower($row->status ?? '');
+                                $badgeClass = match($st) {
+                                    'punch_out', 'present' => 'bg-success bg-opacity-10 text-success border border-success border-opacity-25',
+                                    'punch_in'  => 'bg-success bg-opacity-10 text-success border border-success border-opacity-25',
+                                    'half_day'  => 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25',
+                                    'absent'    => 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25',
+                                    'leave'     => 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25',
+                                    'late'      => 'bg-danger bg-opacity-10 text-danger',
+                                    default     => 'bg-secondary bg-opacity-10 text-secondary',
+                                };
+                                $statusLabel = match($st) {
+                                    'punch_out' => 'Present',
+                                    'punch_in'  => 'In Office',
+                                    'half_day'  => 'Half Day',
+                                    'absent'    => 'Absent',
+                                    'leave'     => 'On Leave',
+                                    'late'      => 'Late',
+                                    default     => ucfirst(str_replace('_', ' ', $st ?: 'Unknown')),
+                                };
                             @endphp
-                            <span class="badge bg-{{ $sc }} bg-opacity-10 text-{{ $sc }} rounded-pill px-3">
-                                {{ ucfirst(str_replace('_',' ',$row->status)) }}
+                            <span class="badge {{ $badgeClass }} rounded-pill px-3 py-1 fw-bold">
+                                {{ $statusLabel }}
                             </span>
                         </td>
                         @php
                             $worked = (int) ($row->working_minutes ?? 0);
                             $rowShift = optional($row->employee)->shift ?? null;
                             $req = ($rowShift && $rowShift->min_present_mins) ? (int) $rowShift->min_present_mins : $reportSummary['defaultRequiredMins'];
+                            $prod = min($worked, $req);
                             $ov = max(0, $worked - $req);
                         @endphp
                         <td class="fw-bold">{{ intdiv($worked, 60) }}h {{ $worked % 60 }}m</td>
-                        <td class="fw-bold text-secondary">{{ intdiv($req, 60) }}h {{ $req % 60 }}m</td>
-                        <td class="fw-bold text-warning">{{ intdiv($ov, 60) }}h {{ $ov % 60 }}m</td>
+                        <td class="fw-bold text-secondary">{{ intdiv($prod, 60) }}h {{ $prod % 60 }}m</td>
+                        <td class="fw-bold text-warning">{{ $ov > 0 ? (intdiv($ov, 60) . 'h ' . ($ov % 60) . 'm') : '-' }}</td>
                     </tr>
                     @empty
                     <tr><td colspan="12" class="text-center py-5 text-muted">No attendance records found.</td></tr>

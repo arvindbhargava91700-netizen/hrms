@@ -167,23 +167,76 @@ class AttendanceCalendar extends Component
                     $dailyStatuses[$i] = 'Holiday';
                 } elseif (isset($leaveDays[$i])) {
                     $dailyStatuses[$i] = 'Leave';
-                } elseif (isset($records[$i]) && $records[$i]->check_in) {
-                    $status = $records[$i]->status ?? '';
-                    if (in_array($status, ['half_day', 'short_leave', 'late'])) {
-                        $dailyStatuses[$i] = ucfirst(str_replace('_', ' ', $status));
-                    } elseif ($status === 'punch_in') {
+                } elseif (isset($records[$i])) {
+                    $rec = $records[$i];
+                    $recStatus = strtolower(trim($rec->status ?? ''));
+
+                    if ($recStatus === 'absent') {
+                        $dailyStatuses[$i] = 'Absent';
+                    } elseif ($recStatus === 'half_day') {
+                        $dailyStatuses[$i] = 'Half Day';
+                    } elseif ($recStatus === 'short_leave') {
+                        $dailyStatuses[$i] = 'Short Leave';
+                    } elseif ($recStatus === 'late') {
+                        $dailyStatuses[$i] = 'Late';
+                    } elseif ($recStatus === 'leave') {
+                        $dailyStatuses[$i] = 'Leave';
+                    } elseif ($recStatus === 'punch_in') {
                         $dailyStatuses[$i] = 'Punch In';
-                    } else {
+                    } elseif ($recStatus === 'punch_out' || $recStatus === 'present') {
                         $dailyStatuses[$i] = 'Punch Out';
-                        if ($records[$i]->check_out) {
-                            $in = Carbon::parse($records[$i]->check_in);
-                            $out = Carbon::parse($records[$i]->check_out);
-                            if ($in->diffInHours($out) < 4) {
-                                $dailyStatuses[$i] = 'Half Day';
+                    } elseif ($rec->check_in) {
+                        if ($rec->check_out) {
+                            $in = Carbon::parse($dateString . ' ' . $rec->check_in);
+                            $out = Carbon::parse($dateString . ' ' . $rec->check_out);
+                            if ($out->lt($in)) $out->addDay();
+                            $workingMins = (int) abs($in->diffInMinutes($out));
+
+                            $shift = $selEmployee?->shift ?? ($rec->shift_id ? \App\Models\WorkShift::find($rec->shift_id) : null);
+                            $shiftDurationMins = null;
+                            if ($shift && $shift->start_time && $shift->end_time) {
+                                try {
+                                    $sStart = Carbon::parse($dateString . ' ' . $shift->start_time);
+                                    $sEnd = Carbon::parse($dateString . ' ' . $shift->end_time);
+                                    if ($sEnd->lt($sStart)) {
+                                        $sEnd12 = $sEnd->copy()->addHours(12);
+                                        if ($sEnd12->gt($sStart) && $sStart->diffInMinutes($sEnd12) <= 720) {
+                                            $sEnd = $sEnd12;
+                                        } else {
+                                            $sEnd->addDay();
+                                        }
+                                    }
+                                    $shiftDurationMins = (int) abs($sStart->diffInMinutes($sEnd));
+                                } catch (\Exception $e) {}
                             }
-                        } else if ($currentDateObj->isPast() && !$currentDateObj->isToday()) {
-                            $dailyStatuses[$i] = 'Half Day';
+
+                            $minHalf = 120;
+                            $minPres = 240;
+                            if ($shiftDurationMins && $shiftDurationMins > 0) {
+                                $minHalf = (!empty($shift->min_half_day_mins) && $shift->min_half_day_mins < $shiftDurationMins)
+                                    ? (int) $shift->min_half_day_mins
+                                    : (int) round($shiftDurationMins / 2);
+                                $minPres = (!empty($shift->min_present_mins) && $shift->min_present_mins <= $shiftDurationMins)
+                                    ? (int) $shift->min_present_mins
+                                    : $shiftDurationMins;
+                            }
+                            $grace = (int) ($shift->late_tolerance_minutes ?? 15);
+                            $fullDayThresh = max($minHalf + 1, $minPres - $grace);
+
+                            if ($workingMins < $minHalf) {
+                                $dailyStatuses[$i] = 'Absent';
+                            } elseif ($workingMins < $fullDayThresh) {
+                                $dailyStatuses[$i] = 'Half Day';
+                            } else {
+                                $dailyStatuses[$i] = 'Punch Out';
+                            }
+                        } elseif ($currentDateObj->isPast() && !$currentDateObj->isToday()) {
+                            $dailyStatuses[$i] = 'Absent';
+                        } else {
+                            $dailyStatuses[$i] = 'Punch In';
                         }
+                    } else {
+                        $dailyStatuses[$i] = 'Absent';
                     }
                 } elseif ($isSunday) {
                     $dailyStatuses[$i] = 'Week Off';

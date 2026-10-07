@@ -3,6 +3,14 @@
     <ul class="nav nav-tabs mb-4 border-bottom-0" style="gap: 0.5rem; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
 
         <li class="nav-item">
+            <a class="nav-link {{ $activeTab === 'general' ? 'active shadow-sm fw-bold border-bottom-0' : 'bg-light text-muted border-0' }}" 
+               wire:click.prevent="switchTab('general')" 
+               href="#" 
+               style="{{ $activeTab === 'general' ? 'border-radius: 8px 8px 0 0;' : 'border-radius: 8px;' }}">
+                <i class="bi bi-buildings me-1 text-primary"></i> General Settings
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{ $activeTab === 'holidays' ? 'active shadow-sm fw-bold border-bottom-0' : 'bg-light text-muted border-0' }}" 
                wire:click.prevent="switchTab('holidays')" 
                href="#" 
@@ -79,6 +87,200 @@
     <!-- Tabs Content -->
     <div class="tab-content">
 
+        <!-- Tab: General Settings -->
+        @if($activeTab === 'general')
+        <div class="row fade show active">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm border-0 bg-white rounded-4 overflow-hidden">
+                    <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-buildings me-2 text-primary"></i>General Company Settings</h5>
+                            <p class="text-muted small mb-0">Configure company identity, contact information, official logo, and browser favicon. These details represent your organization across the HRMS portal.</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        @if (session()->has('success_general'))
+                            <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+                                <i class="bi bi-check-circle-fill me-2"></i>{{ session('success_general') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                        <form wire:submit.prevent="saveGeneralSettings">
+                            <div class="row g-4">
+                                <!-- Left Column: Basic Information & Contact Details -->
+                                <div class="col-lg-7">
+                                    <div class="p-4 rounded-3 h-100" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                        <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom d-flex align-items-center">
+                                            <i class="bi bi-building me-2 text-primary"></i>Company Information
+                                        </h6>
+
+                                        <div class="row g-3">
+                                            <!-- Company Name -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">Company Name <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white text-muted"><i class="bi bi-building"></i></span>
+                                                    <input type="text" class="form-control bg-white" wire:model="company_name" placeholder="Enter company name">
+                                                </div>
+                                                @error('company_name') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+                                            </div>
+
+                                            <!-- About Company -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">About Company</label>
+                                                <textarea class="form-control bg-white" wire:model="company_about" rows="3" placeholder="Brief description, about company, mission or overview..."></textarea>
+                                                @error('company_about') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+                                            </div>
+
+                                            <!-- Mobile & Email -->
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold text-dark mb-1">Mobile / Phone Number</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white text-muted"><i class="bi bi-telephone"></i></span>
+                                                    <input type="text" class="form-control bg-white" wire:model="company_mobile" placeholder="e.g. +91 9876543210">
+                                                </div>
+                                                @error('company_mobile') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold text-dark mb-1">Email Address</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white text-muted"><i class="bi bi-envelope"></i></span>
+                                                    <input type="email" class="form-control bg-white" wire:model="company_email" placeholder="e.g. info@company.com">
+                                                </div>
+                                                @error('company_email') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+                                            </div>
+
+                                            <!-- Address -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">Company Address</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white text-muted"><i class="bi bi-geo-alt"></i></span>
+                                                    <textarea class="form-control bg-white" wire:model="company_address" rows="2" placeholder="Full registered address, office location, city, state, pincode..."></textarea>
+                                                </div>
+                                                @error('company_address') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Branding & Media Assets -->
+                                <div class="col-lg-5">
+                                    <div class="p-4 rounded-3 h-100" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                        <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom d-flex align-items-center">
+                                            <i class="bi bi-palette me-2 text-primary"></i>Branding & Media
+                                        </h6>
+
+                                        <div class="row g-4">
+                                            <!-- Company Logo -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
+                                                    <span>Company Logo</span>
+                                                    @if($company_logo)
+                                                        <button type="button" wire:click="removeCompanyLogo" class="btn btn-link text-danger p-0 text-decoration-none" style="font-size: 0.75rem;" onclick="confirm('Are you sure you want to remove the logo?') || event.stopImmediatePropagation()">
+                                                            <i class="bi bi-trash"></i> Remove Logo
+                                                        </button>
+                                                    @endif
+                                                </label>
+                                                <input type="file" class="form-control bg-white" wire:model="new_company_logo" accept="image/*">
+                                                <div class="text-muted mt-1" style="font-size: 0.75rem;">Supported: PNG, JPG, SVG, WebP (Max 3MB).</div>
+                                                @error('new_company_logo') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+
+                                                <div wire:loading wire:target="new_company_logo" class="text-primary small mt-2">
+                                                    <span class="spinner-border spinner-border-sm me-1"></span> Uploading logo preview...
+                                                </div>
+
+                                                <!-- Logo Preview Box -->
+                                                <div class="mt-2 p-3 bg-white rounded-3 border d-flex align-items-center justify-content-center text-center" style="min-height: 90px;">
+                                                    @if ($new_company_logo)
+                                                        <div>
+                                                            <img src="{{ $new_company_logo->temporaryUrl() }}" alt="New Logo Preview" style="max-height: 60px; max-width: 100%; object-fit: contain;">
+                                                            <div class="badge bg-success bg-gradient mt-2 d-block">New Logo Selected</div>
+                                                        </div>
+                                                    @elseif ($company_logo)
+                                                        <div>
+                                                            <img src="{{ asset('storage/' . $company_logo) }}" alt="Current Logo" style="max-height: 60px; max-width: 100%; object-fit: contain;">
+                                                            <div class="text-muted mt-1" style="font-size: 0.75rem;">Current Active Logo</div>
+                                                        </div>
+                                                    @else
+                                                        <div class="text-muted py-2">
+                                                            <i class="bi bi-image fs-3 d-block text-secondary opacity-50"></i>
+                                                            <span class="small">No logo uploaded yet</span>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <!-- Favicon Icon -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
+                                                    <span>Favicon Icon</span>
+                                                    @if($company_favicon)
+                                                        <button type="button" wire:click="removeCompanyFavicon" class="btn btn-link text-danger p-0 text-decoration-none" style="font-size: 0.75rem;" onclick="confirm('Are you sure you want to remove the favicon?') || event.stopImmediatePropagation()">
+                                                            <i class="bi bi-trash"></i> Remove Favicon
+                                                        </button>
+                                                    @endif
+                                                </label>
+                                                <input type="file" class="form-control bg-white" wire:model="new_company_favicon" accept=".ico,.png,.jpg,.jpeg,.svg">
+                                                <div class="text-muted mt-1" style="font-size: 0.75rem;">Browser tab icon (ICO, PNG, SVG - Max 1MB).</div>
+                                                @error('new_company_favicon') <span class="text-danger small mt-1 d-block">{{ $message }}</span> @enderror
+
+                                                <div wire:loading wire:target="new_company_favicon" class="text-primary small mt-2">
+                                                    <span class="spinner-border spinner-border-sm me-1"></span> Uploading favicon preview...
+                                                </div>
+
+                                                <!-- Favicon Preview Box -->
+                                                <div class="mt-2 p-3 bg-white rounded-3 border d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div class="rounded border p-2 bg-light d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px;">
+                                                            @if ($new_company_favicon)
+                                                                <img src="{{ $new_company_favicon->temporaryUrl() }}" alt="New Favicon Preview" style="width: 28px; height: 28px; object-fit: contain;">
+                                                            @elseif ($company_favicon)
+                                                                <img src="{{ asset('storage/' . $company_favicon) }}" alt="Current Favicon" style="width: 28px; height: 28px; object-fit: contain;">
+                                                            @else
+                                                                <i class="bi bi-globe2 text-secondary fs-5"></i>
+                                                            @endif
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-semibold text-dark small">Browser Tab Icon Preview</div>
+                                                            <div class="text-muted" style="font-size: 0.75rem;">
+                                                                @if ($new_company_favicon)
+                                                                    <span class="text-success fw-bold">New favicon selected</span>
+                                                                @elseif ($company_favicon)
+                                                                    <span>Active Custom Favicon</span>
+                                                                @else
+                                                                    <span>Default System Favicon</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="col-12 pt-2">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button type="submit" class="btn btn-primary rounded-pill px-5 py-2.5 fw-bold shadow-sm" wire:loading.attr="disabled">
+                                            <span wire:loading.remove wire:target="saveGeneralSettings">
+                                                <i class="bi bi-check2-circle me-1"></i> Save General Settings
+                                            </span>
+                                            <span wire:loading wire:target="saveGeneralSettings">
+                                                <span class="spinner-border spinner-border-sm me-1"></span> Saving...
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
 
         <!-- Tab: Holidays -->
         @if($activeTab === 'holidays')
@@ -374,7 +576,7 @@
                                             @if ($new_payslip_logo)
                                                 <div class="mt-2 text-success small"><i class="bi bi-check-circle me-1"></i> New logo ready to save.</div>
                                             @elseif ($payslip_logo)
-                                                <div class="mt-2"><img src="{{ Storage::url($payslip_logo) }}" alt="Current Logo" style="max-height: 40px;"></div>
+                                                <div class="mt-2"><img src="{{ asset('storage/' . $payslip_logo) }}" alt="Current Logo" style="max-height: 40px;"></div>
                                             @endif
                                         </div>
                                         <div class="col-12">
@@ -397,7 +599,7 @@
                                             @if ($new_payslip_signature)
                                                 <div class="mt-2 text-success small"><i class="bi bi-check-circle me-1"></i> New signature ready to save.</div>
                                             @elseif ($payslip_signature)
-                                                <div class="mt-2"><img src="{{ Storage::url($payslip_signature) }}" alt="Current Signature" style="max-height: 40px;"></div>
+                                                <div class="mt-2"><img src="{{ asset('storage/' . $payslip_signature) }}" alt="Current Signature" style="max-height: 40px;"></div>
                                             @endif
                                         </div>
                                         <div class="col-12">

@@ -59,6 +59,73 @@ class ManualAttendanceOverride extends Component
         $this->checkExistingAttendance();
     }
 
+    public function updatedCheckIn($value)
+    {
+        $this->autoDetectStatus();
+    }
+
+    public function updatedCheckOut($value)
+    {
+        $this->autoDetectStatus();
+    }
+
+    public function updatedShiftId($value)
+    {
+        $this->autoDetectStatus();
+    }
+
+    public function autoDetectStatus()
+    {
+        if ($this->check_in && $this->check_out && in_array($this->status, ['present', 'punch_in', 'punch_out', 'absent', 'half_day'])) {
+            try {
+                $in = Carbon::parse($this->date . ' ' . $this->check_in);
+                $out = Carbon::parse($this->date . ' ' . $this->check_out);
+                if ($out->lt($in)) {
+                    $out->addDay();
+                }
+                $workingMins = (int) abs($in->diffInMinutes($out));
+
+                $shift = $this->shift_id ? WorkShift::find($this->shift_id) : null;
+                $shiftDurationMins = null;
+                if ($shift && $shift->start_time && $shift->end_time) {
+                    $sStart = Carbon::parse($this->date . ' ' . $shift->start_time);
+                    $sEnd = Carbon::parse($this->date . ' ' . $shift->end_time);
+                    if ($sEnd->lt($sStart)) {
+                        $sEnd12 = $sEnd->copy()->addHours(12);
+                        if ($sEnd12->gt($sStart) && $sStart->diffInMinutes($sEnd12) <= 720) {
+                            $sEnd = $sEnd12;
+                        } else {
+                            $sEnd->addDay();
+                        }
+                    }
+                    $shiftDurationMins = (int) abs($sStart->diffInMinutes($sEnd));
+                }
+
+                $minHalfDay = 120;
+                $minPresent = 240;
+                if ($shiftDurationMins && $shiftDurationMins > 0) {
+                    $minHalfDay = (!empty($shift->min_half_day_mins) && $shift->min_half_day_mins < $shiftDurationMins)
+                        ? (int) $shift->min_half_day_mins
+                        : (int) round($shiftDurationMins / 2);
+                    $minPresent = (!empty($shift->min_present_mins) && $shift->min_present_mins <= $shiftDurationMins)
+                        ? (int) $shift->min_present_mins
+                        : $shiftDurationMins;
+                }
+
+                $grace = (int) ($shift->late_tolerance_minutes ?? 15);
+                $fullDayThreshold = max($minHalfDay + 1, $minPresent - $grace);
+
+                if ($workingMins < $minHalfDay) {
+                    $this->status = 'absent';
+                } elseif ($workingMins < $fullDayThreshold) {
+                    $this->status = 'half_day';
+                } else {
+                    $this->status = 'present';
+                }
+            } catch (\Exception $e) {}
+        }
+    }
+
     public function checkExistingAttendance()
     {
         if ($this->employee_id && $this->date) {
@@ -115,28 +182,69 @@ class ManualAttendanceOverride extends Component
             }
         }
 
-        if ($this->check_in && $this->shift_id) {
-            $shift = WorkShift::find($this->shift_id);
-            if ($shift && $shift->start_time) {
-                try {
-                    $shiftStart = Carbon::parse($this->date . ' ' . $shift->start_time);
-                    $actualIn = Carbon::parse($this->date . ' ' . $this->check_in);
-                    $grace = (int)($shift->late_tolerance_minutes ?? 15);
-                    if ($actualIn->gt($shiftStart)) {
-                        $diff = $shiftStart->diffInMinutes($actualIn);
-                        if ($diff > $grace) {
-                            $lateMinutes = $diff;
-                        }
+        $shift = $this->shift_id ? WorkShift::find($this->shift_id) : ($employee->shift ?? null);
+
+        if ($this->check_in && $shift && $shift->start_time) {
+            try {
+                $shiftStart = Carbon::parse($this->date . ' ' . $shift->start_time);
+                $actualIn = Carbon::parse($this->date . ' ' . $this->check_in);
+                $grace = (int)($shift->late_tolerance_minutes ?? 15);
+                if ($actualIn->gt($shiftStart)) {
+                    $diff = $shiftStart->diffInMinutes($actualIn);
+                    if ($diff > $grace) {
+                        $lateMinutes = $diff;
                     }
-                } catch (\Exception $e) {
-                    // Ignore parse errors
                 }
+            } catch (\Exception $e) {
+                // Ignore parse errors
             }
         }
 
+        // Calculate shift duration and dynamic thresholds for status mapping
+        $shiftDurationMins = null;
+        if ($shift && $shift->start_time && $shift->end_time) {
+            try {
+                $sStart = Carbon::parse($this->date . ' ' . $shift->start_time);
+                $sEnd = Carbon::parse($this->date . ' ' . $shift->end_time);
+                if ($sEnd->lt($sStart)) {
+                    $sEnd12 = $sEnd->copy()->addHours(12);
+                    if ($sEnd12->gt($sStart) && $sStart->diffInMinutes($sEnd12) <= 720) {
+                        $sEnd = $sEnd12;
+                    } else {
+                        $sEnd->addDay();
+                    }
+                }
+                $shiftDurationMins = (int) abs($sStart->diffInMinutes($sEnd));
+            } catch (\Exception $e) {}
+        }
+
+        $minHalfDay = 120;
+        $minPresent = 240;
+        if ($shiftDurationMins && $shiftDurationMins > 0) {
+            $minHalfDay = (!empty($shift->min_half_day_mins) && $shift->min_half_day_mins < $shiftDurationMins)
+                ? (int) $shift->min_half_day_mins
+                : (int) round($shiftDurationMins / 2);
+            $minPresent = (!empty($shift->min_present_mins) && $shift->min_present_mins <= $shiftDurationMins)
+                ? (int) $shift->min_present_mins
+                : $shiftDurationMins;
+        }
+
+        $grace = (int) ($shift->late_tolerance_minutes ?? 15);
+        $fullDayThreshold = max($minHalfDay + 1, $minPresent - $grace);
+
         // Map status for DB
         $dbStatus = $this->status;
-        if ($dbStatus === 'present') {
+
+        // If check-in and check-out are given, evaluate working hours vs shift thresholds:
+        if ($this->check_in && $this->check_out && in_array($this->status, ['present', 'punch_in', 'punch_out'])) {
+            if ($workingMinutes < $minHalfDay) {
+                $dbStatus = 'absent';
+            } elseif ($workingMinutes < $fullDayThreshold) {
+                $dbStatus = 'half_day';
+            } else {
+                $dbStatus = 'punch_out';
+            }
+        } elseif ($dbStatus === 'present') {
             $dbStatus = $this->check_out ? 'punch_out' : 'punch_in';
         }
 
@@ -169,7 +277,7 @@ class ManualAttendanceOverride extends Component
 
             // Create override audit record
             AttendanceOverride::create([
-                'partner_id'         => $this->requirePartnerId(),
+                'partner_id'         => $this->getPartnerId(),
                 'employee_id'        => $this->employee_id,
                 'attendance_id'      => $attendance->id,
                 'overridden_by'      => auth()->id(),

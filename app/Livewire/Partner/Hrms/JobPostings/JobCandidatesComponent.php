@@ -278,10 +278,10 @@ class JobCandidatesComponent extends Component
             'candidates' => $candidates,
             'counts' => $counts
         ])->layout('layouts.app', [
-            'panelName' => auth()->user()->role === 'super_admin' || auth()->user()->role === 'admin' ? 'Admin Panel' : 'HRMS Module',
+            'panelName' => 'HRMS Module',
             'pageTitle' => 'Candidates - ' . $this->jobPost->job_title,
             'pageSubtitle' => 'Manage applications for this job',
-            'sidebarLinks' => auth()->user()->role === 'super_admin' || auth()->user()->role === 'admin' ? view('partials.sidebar-admin') : view('partials.sidebar-partner'),
+            'sidebarLinks' => view('partials.sidebar-partner'),
         ]);
     }
 

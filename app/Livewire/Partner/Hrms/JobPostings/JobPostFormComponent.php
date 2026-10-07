@@ -238,10 +238,10 @@ class JobPostFormComponent extends Component
             'plans' => $this->step === 5 ? JobPlan::where('is_active', true)->get() : [],
             'jobSettings' => in_array($this->step, [2, 3]) ? \App\Models\JobSetting::all()->groupBy('type') : [],
         ])->layout('layouts.app', [
-            'panelName' => in_array(auth()->user()->role, ['super_admin', 'admin']) ? 'Admin Panel' : 'HRMS Module',
+            'panelName' => 'HRMS Module',
             'pageTitle' => 'Job Postings & Referrals',
             'pageSubtitle' => 'Manage job vacancies and referral incentives',
-            'sidebarLinks' => in_array(auth()->user()->role, ['super_admin', 'admin']) ? view('partials.sidebar-admin') : view('partials.sidebar-partner'),
+            'sidebarLinks' => view('partials.sidebar-partner'),
         ]);
     }
 

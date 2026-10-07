@@ -332,20 +332,15 @@ class MarkAttendance extends Component
 
         // 1. Get Global Fallbacks
         $globalCheckIn = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'fixed_check_in_time')->value('value') ?? '09:00';
-        $globalLateGrace = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'late_grace_period')->value('value') ?? 15;
-        $globalMinPresent = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'min_present_mins')->value('value') ?? 480;
-        $globalMinHalfDay = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'min_half_day_mins')->value('value') ?? 240;
+        $globalLateGrace = (int) (PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'late_grace_period')->value('value') ?? 15);
+        $globalMinPresent = (int) (PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'min_present_mins')->value('value') ?? 480);
+        $globalMinHalfDay = (int) (PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'min_half_day_mins')->value('value') ?? 240);
 
-        // 2. Override with Shift Settings if available
-        $shiftCheckIn = ($user->shift_id && $user->shift) ? $user->shift->start_time : null;
-        $shiftLateGrace = ($user->shift_id && $user->shift) ? $user->shift->late_tolerance_minutes : null;
-        $shiftMinPresent = ($user->shift_id && $user->shift) ? $user->shift->min_present_mins : null;
-        $shiftMinHalfDay = ($user->shift_id && $user->shift) ? $user->shift->min_half_day_mins : null;
+        // 2. Fetch Employee's Assigned Shift
+        $shift = $user->shift ?? ($this->todayAttendance?->shift_id ? \App\Models\WorkShift::find($this->todayAttendance->shift_id) : null);
 
-        $fixedCheckIn = $shiftCheckIn ?? $globalCheckIn;
-        $lateGracePeriod = $shiftLateGrace ?? $globalLateGrace;
-        $minPresent = (int) ($shiftMinPresent ?? $globalMinPresent);
-        $minHalfDay = (int) ($shiftMinHalfDay ?? $globalMinHalfDay);
+        $fixedCheckIn = ($shift && $shift->start_time) ? $shift->start_time : $globalCheckIn;
+        $lateGracePeriod = (int) ($shift ? ($shift->late_tolerance_minutes ?? 15) : $globalLateGrace);
 
         $now = Carbon::now();
 
@@ -403,8 +398,66 @@ class MarkAttendance extends Component
             $checkInTime = Carbon::parse($dateString.' '.$this->todayAttendance->check_in);
             $workingMinutes = (int) abs($now->diffInMinutes($checkInTime));
 
+            // Calculate shift duration and dynamic thresholds
+            $shiftDurationMins = null;
+            $shiftEndTimeToday = null;
+
+            if ($shift && $shift->start_time && $shift->end_time) {
+                try {
+                    $sStart = Carbon::parse($dateString . ' ' . $shift->start_time);
+                    $sEnd = Carbon::parse($dateString . ' ' . $shift->end_time);
+
+                    if ($sEnd->lt($sStart)) {
+                        $sEnd12 = $sEnd->copy()->addHours(12);
+                        if ($sEnd12->gt($sStart) && $sStart->diffInMinutes($sEnd12) <= 720) {
+                            $sEnd = $sEnd12;
+                        } else {
+                            $sEnd->addDay();
+                        }
+                    }
+
+                    $shiftDurationMins = (int) abs($sStart->diffInMinutes($sEnd));
+                    $shiftEndTimeToday = $sEnd;
+                } catch (\Exception $e) {}
+            }
+
+            if ($shiftDurationMins && $shiftDurationMins > 0) {
+                // Half-day is considered if working at least half the shift or reaching half-day requirement
+                if (!empty($shift->min_half_day_mins) && $shift->min_half_day_mins > 0 && $shift->min_half_day_mins < $shiftDurationMins) {
+                    $minHalfDay = (int) $shift->min_half_day_mins;
+                } else {
+                    $minHalfDay = (int) round($shiftDurationMins / 2);
+                }
+
+                // Full-day requirement
+                if (!empty($shift->min_present_mins) && $shift->min_present_mins > 0 && $shift->min_present_mins <= $shiftDurationMins) {
+                    $minPresent = (int) $shift->min_present_mins;
+                } else {
+                    $minPresent = $shiftDurationMins;
+                }
+            } else {
+                $minPresent = (int) $globalMinPresent;
+                $minHalfDay = (int) $globalMinHalfDay;
+            }
+
+            // Full day threshold allowing late/early tolerance
+            $fullDayThreshold = max($minHalfDay + 1, $minPresent - $lateGracePeriod);
+
+            // Check if employee punched out at or after scheduled shift end (minus tolerance)
+            $punchedOutAtShiftEnd = false;
+            if ($shiftEndTimeToday) {
+                $earliestShiftEnd = $shiftEndTimeToday->copy()->subMinutes($lateGracePeriod);
+                if ($now->greaterThanOrEqualTo($earliestShiftEnd)) {
+                    $punchedOutAtShiftEnd = true;
+                }
+            }
+
+            // Determine status:
+            // - If working hours >= fullDayThreshold (completed full shift duration minus grace) => punch_out (Present)
+            // - If working hours >= minHalfDay (e.g. at least 2 hours / 2 hours before shift end) => half_day
+            // - If working hours < minHalfDay (less than 2 hours) => absent
             $status = 'absent';
-            if ($workingMinutes >= $minPresent) {
+            if ($workingMinutes >= $fullDayThreshold) {
                 $status = 'punch_out';
             } elseif ($workingMinutes >= $minHalfDay) {
                 $status = 'half_day';
@@ -420,7 +473,12 @@ class MarkAttendance extends Component
                 'working_minutes' => $workingMinutes,
                 'check_out_checklist_responses' => count($responsesToSave) > 0 ? $responsesToSave : null,
             ]);
-            session()->flash('success', 'Checked Out successfully! Final Status: '.ucfirst(str_replace('_', ' ', $status)));
+
+            $statusLabel = $status === 'punch_out' ? 'Present' : ucfirst(str_replace('_', ' ', $status));
+            $hours = floor($workingMinutes / 60);
+            $mins = $workingMinutes % 60;
+            $timeWorkedText = $hours > 0 ? "{$hours}h {$mins}m" : "{$mins}m";
+            session()->flash('success', "Checked Out successfully! Final Status: {$statusLabel} (Worked: {$timeWorkedText})");
         }
 
         $this->loadTodayAttendance();

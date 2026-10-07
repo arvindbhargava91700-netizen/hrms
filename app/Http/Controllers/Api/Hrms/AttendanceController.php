@@ -304,24 +304,73 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'error', 'message' => 'You have already punched out for today.'], 422);
         }
 
-        $shiftMinPresent = ($user->shift_id && $user->shift) ? $user->shift->min_present_mins : null;
-        $shiftMinHalfDay = ($user->shift_id && $user->shift) ? $user->shift->min_half_day_mins : null;
-
-        // Cast: these come back from PartnerSetting as strings.
-        $minPresent = (int) ($shiftMinPresent ?? PartnerSetting::where('partner_id', $partnerId)->where('key', 'min_present_mins')->value('value') ?? 480);
-        $minShortLeave = (int) (PartnerSetting::where('partner_id', $partnerId)->where('key', 'min_short_leave_mins')->value('value') ?? 420);
-        $minHalfDay = (int) ($shiftMinHalfDay ?? PartnerSetting::where('partner_id', $partnerId)->where('key', 'min_half_day_mins')->value('value') ?? 240);
+        $shift = $user->shift ?? ($attendance->shift_id ? \App\Models\WorkShift::find($attendance->shift_id) : null);
+        $globalMinPresent = (int) (PartnerSetting::where('partner_id', $partnerId)->where('key', 'min_present_mins')->value('value') ?? 480);
+        $globalMinHalfDay = (int) (PartnerSetting::where('partner_id', $partnerId)->where('key', 'min_half_day_mins')->value('value') ?? 240);
+        $lateGracePeriod = (int) ($shift ? ($shift->late_tolerance_minutes ?? 15) : (PartnerSetting::where('partner_id', $partnerId)->where('key', 'late_grace_period')->value('value') ?? 15));
 
         $now = Carbon::now();
-        $checkInTime = Carbon::parse($attendance->check_in);
-        $checkInTime->setDate($now->year, $now->month, $now->day);
+        $dateString = $attendance->date instanceof Carbon ? $attendance->date->format('Y-m-d') : Carbon::parse($attendance->date)->format('Y-m-d');
+        $checkInTime = Carbon::parse($dateString . ' ' . $attendance->check_in);
         $workingMinutes = (int) abs($now->diffInMinutes($checkInTime));
 
+        // Calculate shift duration and dynamic thresholds
+        $shiftDurationMins = null;
+        $shiftEndTimeToday = null;
+
+        if ($shift && $shift->start_time && $shift->end_time) {
+            try {
+                $sStart = Carbon::parse($dateString . ' ' . $shift->start_time);
+                $sEnd = Carbon::parse($dateString . ' ' . $shift->end_time);
+
+                if ($sEnd->lt($sStart)) {
+                    $sEnd12 = $sEnd->copy()->addHours(12);
+                    if ($sEnd12->gt($sStart) && $sStart->diffInMinutes($sEnd12) <= 720) {
+                        $sEnd = $sEnd12;
+                    } else {
+                        $sEnd->addDay();
+                    }
+                }
+
+                $shiftDurationMins = (int) abs($sStart->diffInMinutes($sEnd));
+                $shiftEndTimeToday = $sEnd;
+            } catch (\Exception $e) {}
+        }
+
+        if ($shiftDurationMins && $shiftDurationMins > 0) {
+            if (!empty($shift->min_half_day_mins) && $shift->min_half_day_mins > 0 && $shift->min_half_day_mins < $shiftDurationMins) {
+                $minHalfDay = (int) $shift->min_half_day_mins;
+            } else {
+                $minHalfDay = (int) round($shiftDurationMins / 2);
+            }
+
+            if (!empty($shift->min_present_mins) && $shift->min_present_mins > 0 && $shift->min_present_mins <= $shiftDurationMins) {
+                $minPresent = (int) $shift->min_present_mins;
+            } else {
+                $minPresent = $shiftDurationMins;
+            }
+        } else {
+            $minPresent = $globalMinPresent;
+            $minHalfDay = $globalMinHalfDay;
+        }
+
+        $fullDayThreshold = max($minHalfDay + 1, $minPresent - $lateGracePeriod);
+
+        $punchedOutAtShiftEnd = false;
+        if ($shiftEndTimeToday) {
+            $earliestShiftEnd = $shiftEndTimeToday->copy()->subMinutes($lateGracePeriod);
+            if ($now->greaterThanOrEqualTo($earliestShiftEnd)) {
+                $punchedOutAtShiftEnd = true;
+            }
+        }
+
+        // Determine status:
+        // - If working hours >= fullDayThreshold => punch_out (Present)
+        // - If working hours >= minHalfDay => half_day
+        // - If working hours < minHalfDay => absent
         $status = 'absent';
-        if ($workingMinutes >= $minPresent) {
+        if ($workingMinutes >= $fullDayThreshold) {
             $status = 'punch_out';
-        } elseif ($workingMinutes >= $minShortLeave) {
-            $status = 'short_leave';
         } elseif ($workingMinutes >= $minHalfDay) {
             $status = 'half_day';
         }

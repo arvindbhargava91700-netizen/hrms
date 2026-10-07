@@ -364,8 +364,15 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
             return null;
         }
         $val = $this->attributes['profile_image'];
+        if (str_starts_with($val, 'data:image')) {
+            return $val;
+        }
+        if (str_contains($val, '/storage/')) {
+            $parts = explode('/storage/', $val);
+            return asset('storage/' . ltrim(end($parts), '/'));
+        }
 
-        return str_starts_with($val, 'http') ? $val : asset('storage/'.$val);
+        return str_starts_with($val, 'http') ? $val : asset('storage/' . ltrim($val, '/'));
     }
 
     public function getAvatarUrlAttribute(): string

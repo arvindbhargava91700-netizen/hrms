@@ -17,7 +17,18 @@ class Settings extends Component
     public $holiday_date;
     public $holiday_branch_id = null;
 
-    public $activeTab = 'holidays';
+    public $activeTab = 'general';
+
+    // General Company Settings
+    public $company_name = '';
+    public $company_about = '';
+    public $company_mobile = '';
+    public $company_email = '';
+    public $company_address = '';
+    public $company_logo = null;
+    public $company_favicon = null;
+    public $new_company_logo = null;
+    public $new_company_favicon = null;
 
     // Commission Levels
     public $level_name;
@@ -79,6 +90,32 @@ class Settings extends Component
         $this->payslip_logo = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'payslip_logo')->value('value');
         $this->payslip_signature = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'payslip_signature')->value('value');
 
+        // Load General Settings
+        $this->company_name = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_name')->value('value') ?? '';
+        $this->company_about = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_about')->value('value') ?? '';
+        $this->company_mobile = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_mobile')->value('value') ?? '';
+        $this->company_email = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_email')->value('value') ?? '';
+        $this->company_address = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_address')->value('value') ?? '';
+        $this->company_logo = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_logo')->value('value');
+        $this->company_favicon = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'company_favicon')->value('value');
+
+        if (empty($this->company_name)) {
+            $partnerUser = auth()->user()->isPartner() ? auth()->user() : \App\Models\User::find(auth()->user()->parent_id);
+            $this->company_name = ($this->payslip_company_name !== 'Your Company Name' && !empty($this->payslip_company_name)) ? $this->payslip_company_name : ($partnerUser?->name ?? '');
+            if (empty($this->company_email)) {
+                $this->company_email = $partnerUser?->email ?? '';
+            }
+            if (empty($this->company_mobile)) {
+                $this->company_mobile = $partnerUser?->mobile ?? '';
+            }
+            if (empty($this->company_address) && $this->payslip_company_address !== 'Your Company Address') {
+                $this->company_address = $this->payslip_company_address ?? '';
+            }
+            if (empty($this->company_logo) && !empty($this->payslip_logo)) {
+                $this->company_logo = $this->payslip_logo;
+            }
+        }
+
         // Load Performance Settings
         $this->perf_attendance_weight = (int) (PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'perf_attendance_weight')->value('value') ?? 25);
         $this->perf_tasks_weight = (int) (PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'perf_tasks_weight')->value('value') ?? 25);
@@ -88,6 +125,26 @@ class Settings extends Component
         // Load Staff Overrides
         $rawOverrides = PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })->where('key', 'perf_staff_overrides')->value('value');
         $this->perf_staff_overrides = !empty($rawOverrides) ? json_decode($rawOverrides, true) : [];
+
+        // Ensure assets are mirrored to public/storage for local XAMPP/Apache web serving
+        $this->mirrorToPublicStorage($this->company_logo);
+        $this->mirrorToPublicStorage($this->company_favicon);
+        $this->mirrorToPublicStorage($this->payslip_logo);
+        $this->mirrorToPublicStorage($this->payslip_signature);
+    }
+
+    public function mirrorToPublicStorage($relativePath)
+    {
+        if (empty($relativePath)) return;
+        $storedPath = storage_path('app/public/' . $relativePath);
+        $publicPath = public_path('storage/' . $relativePath);
+        if (file_exists($storedPath) && !file_exists($publicPath)) {
+            $dir = dirname($publicPath);
+            if (!file_exists($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            @copy($storedPath, $publicPath);
+        }
     }
 
     protected function getPartnerId()
@@ -181,6 +238,92 @@ class Settings extends Component
         }
     }
 
+    public function saveGeneralSettings()
+    {
+        abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('hrmssetting_manage'), 403);
+
+        $this->validate([
+            'company_name'        => 'required|string|max:255',
+            'company_about'       => 'nullable|string|max:3000',
+            'company_mobile'      => 'nullable|string|max:30',
+            'company_email'       => 'nullable|email|max:255',
+            'company_address'     => 'nullable|string|max:1000',
+            'new_company_logo'    => 'nullable|image|max:3072',
+            'new_company_favicon' => 'nullable|mimes:ico,png,jpg,jpeg,svg|max:1024',
+        ], [
+            'company_name.required' => 'Company Name is required.',
+            'new_company_logo.image' => 'The logo must be a valid image file (PNG, JPG, SVG, WebP).',
+            'new_company_favicon.mimes' => 'The favicon must be an icon or image file (ICO, PNG, JPG, SVG).',
+        ]);
+
+        $partnerId = $this->getPartnerId();
+
+        // Save / Update company text properties
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_name'], ['value' => $this->company_name]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_about'], ['value' => $this->company_about]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_mobile'], ['value' => $this->company_mobile]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_email'], ['value' => $this->company_email]);
+        PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_address'], ['value' => $this->company_address]);
+
+        // Keep payslip details in sync if they still have placeholder values
+        if ($this->payslip_company_name === 'Your Company Name' || empty($this->payslip_company_name)) {
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_company_name'], ['value' => $this->company_name]);
+            $this->payslip_company_name = $this->company_name;
+        }
+        if ($this->payslip_company_address === 'Your Company Address' || empty($this->payslip_company_address)) {
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_company_address'], ['value' => $this->company_address]);
+            $this->payslip_company_address = $this->company_address;
+        }
+
+        // Upload and save Logo
+        if ($this->new_company_logo) {
+            $logoPath = $this->new_company_logo->store('company/logos', 'public');
+            $this->mirrorToPublicStorage($logoPath);
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_logo'], ['value' => $logoPath]);
+            $this->company_logo = $logoPath;
+            $this->new_company_logo = null;
+
+            // Also sync with payslip logo if not set
+            if (!$this->payslip_logo) {
+                PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_logo'], ['value' => $logoPath]);
+                $this->payslip_logo = $logoPath;
+            }
+        }
+
+        // Upload and save Favicon
+        if ($this->new_company_favicon) {
+            $faviconPath = $this->new_company_favicon->store('company/favicons', 'public');
+            $this->mirrorToPublicStorage($faviconPath);
+            PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'company_favicon'], ['value' => $faviconPath]);
+            $this->company_favicon = $faviconPath;
+            $this->new_company_favicon = null;
+        }
+
+        session()->flash('success_general', 'Company general settings saved successfully!');
+    }
+
+    public function removeCompanyLogo()
+    {
+        abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('hrmssetting_manage'), 403);
+        $partnerId = $this->getPartnerId();
+        PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })
+            ->where('key', 'company_logo')->delete();
+        $this->company_logo = null;
+        $this->new_company_logo = null;
+        session()->flash('success_general', 'Company logo removed successfully.');
+    }
+
+    public function removeCompanyFavicon()
+    {
+        abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('hrmssetting_manage'), 403);
+        $partnerId = $this->getPartnerId();
+        PartnerSetting::where(function ($q) use ($partnerId) { if (!auth()->user()->isSuperAdmin()) { $q->where('partner_id', $partnerId); } })
+            ->where('key', 'company_favicon')->delete();
+        $this->company_favicon = null;
+        $this->new_company_favicon = null;
+        session()->flash('success_general', 'Company favicon removed successfully.');
+    }
+
     public function savePayslipSettings()
     {
         abort_unless(auth()->user()->isPartner() || auth()->user()->canAccess('hrmssetting_manage'), 403);
@@ -206,12 +349,14 @@ class Settings extends Component
 
         if ($this->new_payslip_logo) {
             $logoPath = $this->new_payslip_logo->store('payslips/logos', 'public');
+            $this->mirrorToPublicStorage($logoPath);
             PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_logo'], ['value' => $logoPath]);
             $this->payslip_logo = $logoPath;
         }
 
         if ($this->new_payslip_signature) {
             $sigPath = $this->new_payslip_signature->store('payslips/signatures', 'public');
+            $this->mirrorToPublicStorage($sigPath);
             PartnerSetting::updateOrCreate(['partner_id' => $partnerId, 'key' => 'payslip_signature'], ['value' => $sigPath]);
             $this->payslip_signature = $sigPath;
         }

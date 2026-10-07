@@ -24,9 +24,12 @@ class EmployeeAttendance extends Component
     public $selectedWorkingMode = '';
 
     public $expandedKey = null;
+    public $expandedKeys = [];
+    public $allExpanded = false;
 
     public $selectedUsers = [];
     public $pageEmployeeIds = [];
+    public $pageRowKeys = [];
 
     /**
      * Mount
@@ -58,9 +61,79 @@ class EmployeeAttendance extends Component
      */
     public function toggleDetails($key)
     {
-        $this->expandedKey = $this->expandedKey === $key
-            ? null
-            : $key;
+        $key = (string) $key;
+        if (in_array($key, $this->expandedKeys)) {
+            $this->expandedKeys = array_values(array_diff($this->expandedKeys, [$key]));
+        } else {
+            $this->expandedKeys[] = $key;
+        }
+        $this->expandedKey = end($this->expandedKeys) ?: null;
+        $this->allExpanded = count($this->pageRowKeys) > 0 && count(array_intersect($this->pageRowKeys, $this->expandedKeys)) === count($this->pageRowKeys);
+    }
+
+    /**
+     * Expand details for every employee on the current page.
+     */
+    public function expandAll()
+    {
+        $this->expandedKeys = array_values(array_unique(array_merge($this->expandedKeys, $this->pageRowKeys)));
+        $this->allExpanded = true;
+    }
+
+    /**
+     * Collapse all expanded details.
+     */
+    public function collapseAll()
+    {
+        $this->expandedKeys = [];
+        $this->expandedKey = null;
+        $this->allExpanded = false;
+    }
+
+    /**
+     * Toggle expand/collapse all rows.
+     */
+    public function toggleExpandAll()
+    {
+        if ($this->allExpanded || (count($this->pageRowKeys) > 0 && count(array_intersect($this->pageRowKeys, $this->expandedKeys)) === count($this->pageRowKeys))) {
+            $this->collapseAll();
+        } else {
+            $this->expandAll();
+        }
+    }
+
+    /**
+     * Toggle selection of all employees on current page.
+     */
+    public function toggleSelectAll()
+    {
+        $allSelected = count($this->pageEmployeeIds) > 0 && collect($this->pageEmployeeIds)->every(fn($id) => in_array($id, $this->selectedUsers));
+
+        if ($allSelected) {
+            $this->selectedUsers = [];
+            $this->collapseAll();
+        } else {
+            $this->selectedUsers = array_values(array_unique($this->pageEmployeeIds));
+            $this->expandAll();
+        }
+    }
+
+    /**
+     * When selected users change, expand their details automatically.
+     */
+    public function updatedSelectedUsers()
+    {
+        if (!empty($this->selectedUsers)) {
+            $matchedKeys = [];
+            foreach ($this->pageRowKeys as $rowKey) {
+                foreach ($this->selectedUsers as $userId) {
+                    if (str_contains($rowKey, (string) $userId) || $rowKey === (string) $userId) {
+                        $matchedKeys[] = $rowKey;
+                    }
+                }
+            }
+            $this->expandedKeys = array_values(array_unique(array_merge($this->expandedKeys, $matchedKeys)));
+        }
     }
 
     /**
@@ -100,30 +173,6 @@ class EmployeeAttendance extends Component
         $this->resetPage();
     }
 
-    /**
-     * Toggle selection of all employees visible on the current page.
-     */
-    public function toggleSelectAll()
-    {
-        $pageIds = $this->pageEmployeeIds;
-
-        $allSelected = count($pageIds) > 0 &&
-            collect($pageIds)->every(
-                fn ($id) => in_array($id, $this->selectedUsers)
-            );
-
-        if ($allSelected) {
-            $this->selectedUsers = array_values(
-                array_diff($this->selectedUsers, $pageIds)
-            );
-        } else {
-            $this->selectedUsers = array_values(
-                array_unique(
-                    array_merge($this->selectedUsers, $pageIds)
-                )
-            );
-        }
-    }
 
     /**
      * Format minutes into a human-readable duration (e.g. "8h 30m").
@@ -211,7 +260,7 @@ class EmployeeAttendance extends Component
         |--------------------------------------------------------------------------
         */
 
-        $query = EmployeeAttendanceModel::with(['employee.shift'])
+        $query = EmployeeAttendanceModel::with(['employee.shift', 'employee.branch', 'employee.department', 'employee.designation', 'employee.reportingTo'])
             ->whereHas('employee', function ($q) {
                 $q->whereNotIn('role', ['super_admin', 'admin'])
                   ->whereDoesntHave('roles', fn ($r) => $r->whereIn('name', ['super_admin', 'admin']));
@@ -909,6 +958,22 @@ class EmployeeAttendance extends Component
 
         /*
         |--------------------------------------------------------------------------
+        | Track page rows and selection
+        |--------------------------------------------------------------------------
+        */
+
+        $collection = $attendances->getCollection();
+        $this->pageEmployeeIds = $collection->pluck('employee_id')->map(fn ($id) => (string) $id)->unique()->values()->toArray();
+        $this->pageRowKeys = $collection->map(function ($att) {
+            return (string) ($att->id ?: ('v_' . $att->employee_id . '_' . $att->date));
+        })->values()->toArray();
+
+        if ($this->allExpanded) {
+            $this->expandedKeys = array_values(array_unique(array_merge($this->expandedKeys, $this->pageRowKeys)));
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Page Title
         |--------------------------------------------------------------------------
         */
@@ -926,9 +991,12 @@ class EmployeeAttendance extends Component
         return view(
             'livewire.partner.hrms.attendance.employee-attendance',
             [
-                'attendances' => $attendances,
-                'summary'     => $summary,
+                'attendances'         => $attendances,
+                'summary'             => $summary,
                 'defaultRequiredMins' => $defaultRequiredMins,
+                'expandedKeys'        => $this->expandedKeys,
+                'pageRowKeys'         => $this->pageRowKeys,
+                'allExpanded'         => $this->allExpanded,
             ]
         )->layout(
             'layouts.app',

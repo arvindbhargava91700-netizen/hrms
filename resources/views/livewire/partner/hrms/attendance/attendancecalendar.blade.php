@@ -95,7 +95,7 @@
                                         break;
                                 }
                                 
-                                $clickable = in_array($status, ['Punch Out', 'Half Day']);
+                                $clickable = !empty($attendance);
                             @endphp
                             
                             <div class="border-end border-bottom p-2 position-relative {{ $isToday ? 'bg-primary bg-opacity-10' : '' }} {{ $statusClass }} {{ $clickable ? 'cursor-pointer' : '' }}" 

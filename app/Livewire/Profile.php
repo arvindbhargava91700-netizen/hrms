@@ -89,8 +89,7 @@ class Profile extends Component
         $this->current_password = null;
 
         session()->flash('success', 'Profile updated successfully.');
-        $routeName = in_array($user->role, ['partner', 'employee']) ? 'partner.profile' : 'admin.profile';
-        $this->redirectRoute($routeName, navigate: false);
+        $this->redirectRoute('partner.profile', navigate: false);
     }
 
     public function render()
@@ -100,10 +99,10 @@ class Profile extends Component
 
         return view('livewire.profile', compact('salaryStructure'))
             ->layout('layouts.app', [
-                'panelName' => in_array($user->role, ['partner', 'employee']) ? 'Partner Panel' : 'Admin Panel',
+                'panelName' => 'HRMS Panel',
                 'pageTitle' => 'Profile',
                 'pageSubtitle' => 'View and update your account details',
-                'sidebarLinks' => view(in_array($user->role, ['partner', 'employee']) ? 'partials.sidebar-partner' : 'partials.sidebar-admin'),
+                'sidebarLinks' => view('partials.sidebar-partner'),
             ]);
     }
 }

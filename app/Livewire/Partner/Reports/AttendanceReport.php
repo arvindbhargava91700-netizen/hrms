@@ -38,8 +38,7 @@ class AttendanceReport extends Component
         $query = EmployeeAttendance::query();
         if ($isSuperAdmin) {
             $query->whereHas('employee', function($q) {
-                $q->where('role', 'employee')
-                    ->whereIn('parent_id', User::where('role', 'partner')->select('id'));
+                $q->where('role', 'employee');
             });
         } else {
             $query->whereHas('employee', function($q) use ($partnerId) {
@@ -107,12 +106,11 @@ class AttendanceReport extends Component
     {
         if (auth()->user()->role === 'super_admin') {
             return User::where('role', 'employee')
-                ->whereIn('parent_id', User::where('role', 'partner')->select('id'))
                 ->get();
         }
 
         $partnerId = auth()->user()->isPartner() ? auth()->id() : auth()->user()->parent_id;
-        return User::where('parent_id', $partnerId)->where('role', 'employee')->get();
+        return User::where('role', 'employee')->get();
     }
 
     public function render()

@@ -4,11 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Dashboard' }} – Feetrack</title>
+    @php
+        $partnerId = auth()->check() ? (auth()->user()->isPartner() ? auth()->id() : (auth()->user()->parent_id ?: auth()->id())) : null;
+        
+        $getCompanySetting = function ($key) use ($partnerId) {
+            $val = null;
+            if ($partnerId) {
+                $val = \App\Models\PartnerSetting::where('partner_id', $partnerId)->where('key', $key)->value('value');
+            }
+            if (!$val) {
+                $val = \App\Models\PartnerSetting::whereNull('partner_id')->where('key', $key)->value('value');
+            }
+            if (!$val) {
+                $val = \App\Models\PartnerSetting::where('key', $key)->latest()->value('value');
+            }
+            return $val;
+        };
+
+        $companyLogo = $getCompanySetting('company_logo');
+        $companyFavicon = $getCompanySetting('company_favicon');
+        $companyName = $getCompanySetting('company_name') ?: 'Feetrack';
+    @endphp
+    <title>{{ $pageTitle ?? ($title ?? 'Dashboard') }} – {{ $companyName }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="icon" href="{{ asset('images/favicon.ico') }}" type="image/x-icon">
+    @if($companyFavicon)
+        <link rel="icon" href="{{ asset('storage/' . $companyFavicon) }}">
+    @else
+        <link rel="icon" href="{{ asset('images/favicon.ico') }}" type="image/x-icon">
+    @endif
      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ── Global Livewire Loading Bar ─────────────────────── */
@@ -129,7 +154,11 @@
     {{-- ── Sidebar ───────────────────────────── --}}
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand d-flex flex-column align-items-center justify-content-center p-4 text-center" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <img src="{{ asset('images/logo.png') }}" alt="Feetrack" style="width: 130px; max-height: 45px; object-fit: contain; filter: brightness(0) invert(1);">
+            @if($companyLogo)
+                <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}" style="width: 130px;max-height: 45px;object-fit: contain;filter: brightness(0) invert(1);">
+            @else
+                <img src="{{ asset('images/logo.png') }}" alt="{{ $companyName }}" style="width: 130px; max-height: 45px; object-fit: contain; filter: brightness(0) invert(1);">
+            @endif
             <div class="brand-role mt-2" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--primary);">
                 @if(auth()->check())
                     @if(auth()->user()->isAdmin())

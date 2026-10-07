@@ -51,31 +51,60 @@ class EmployeeAttendance extends Model
         return $this->belongsTo(User::class, 'employee_id');
     }
 
+    public static function formatImageUrl(?string $val): ?string
+    {
+        if (empty($val)) {
+            return null;
+        }
+
+        // 1. Data URLs (base64)
+        if (str_starts_with($val, 'data:image')) {
+            return $val;
+        }
+
+        // 2. If it contains /storage/ from any host or relative path
+        if (str_contains($val, '/storage/')) {
+            $parts = explode('/storage/', $val);
+            $relativePath = end($parts);
+            return asset('storage/' . ltrim($relativePath, '/'));
+        }
+
+        // 3. Full HTTP(S) URL
+        if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
+            return str_replace('/storage//storage/', '/storage/', $val);
+        }
+
+        // 4. Relative storage path
+        $trimmed = ltrim($val, '/');
+        if (str_starts_with($trimmed, 'storage/')) {
+            return asset($trimmed);
+        }
+
+        return asset('storage/' . $trimmed);
+    }
+
     public function getCheckInSelfieUrlAttribute(): ?string
     {
-        if (empty($this->attributes['check_in_selfie'])) return null;
-        $val = $this->attributes['check_in_selfie'];
-        return str_starts_with($val, 'http') ? $val : asset('storage/' . $val);
+        return self::formatImageUrl($this->attributes['check_in_selfie'] ?? null);
     }
 
     public function getCheckOutSelfieUrlAttribute(): ?string
     {
-        if (empty($this->attributes['check_out_selfie'])) return null;
-        $val = $this->attributes['check_out_selfie'];
-        return str_starts_with($val, 'http') ? $val : asset('storage/' . $val);
+        return self::formatImageUrl($this->attributes['check_out_selfie'] ?? null);
     }
 
     public function getCheckInPhotoUrlAttribute(): ?string
     {
-        if (empty($this->attributes['check_in_photo'])) return null;
-        $val = $this->attributes['check_in_photo'];
-        return str_starts_with($val, 'http') ? $val : asset('storage/' . $val);
+        return self::formatImageUrl($this->attributes['check_in_photo'] ?? null);
     }
 
     public function getCheckOutPhotoUrlAttribute(): ?string
     {
-        if (empty($this->attributes['check_out_photo'])) return null;
-        $val = $this->attributes['check_out_photo'];
-        return str_starts_with($val, 'http') ? $val : asset('storage/' . $val);
+        return self::formatImageUrl($this->attributes['check_out_photo'] ?? null);
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(WorkShift::class, 'shift_id');
     }
 }

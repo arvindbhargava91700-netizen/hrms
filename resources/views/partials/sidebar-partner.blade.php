@@ -39,7 +39,7 @@
             <li class="nav-heading mt-4 mb-2" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.6rem 1rem; color: #fff; background: linear-gradient(90deg, rgba(13, 110, 253, 0.2), transparent); border-left: 4px solid #0d6efd; border-radius: 0 4px 4px 0;">
                 <i class="bi bi-building me-1 text-primary" style="font-size: 1rem;"></i> HRMS MODULE
             </li>
-                        @if (auth()->user()->canAccess('role_viewAny') || auth()->user()->canAccess('role_viewOwn'))
+                        @if (auth()->user()->isPartner() || auth()->user()->canAccess('role_viewAny'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('partner.hrms.roles') ? 'active' : '' }}"
                                     href="{{ route('partner.hrms.roles') }}"
@@ -48,7 +48,7 @@
                                 </a>
                             </li>
                         @endif
-                        @if (auth()->user()->canAccess('department_viewAny') || auth()->user()->canAccess('department_viewOwn'))
+                        @if (auth()->user()->isPartner() || auth()->user()->canAccess('department_viewAny'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('partner.hrms.departments') ? 'active' : '' }}"
                                     href="{{ route('partner.hrms.departments') }}"
@@ -283,7 +283,8 @@
                                     <i class="bi bi-chevron-down ms-auto"
                                         style="font-size: 0.7rem; transition: transform 0.2s;"></i>
                                 </a>
-                                <div class="collapse {{ request()->routeIs('partner.hrms.leads*') ? 'show' : '' }}"
+                                <div class="collapse {{ request()->routeIs('partner.hrms.leads*') || request()->routeIs('partner.hrms.lead-orders.recovery-history')
+                                 || request()->routeIs('partner.hrms.customer-visits') || request()->routeIs('partner.hrms.lead-orders') || request()->routeIs('partner.hrms.lead-orders.recovery-history')? 'show' : '' }}"
                                     id="crmSubmenu">
                                     <ul class="nav flex-column ms-3"
                                         style="list-style: none; padding-left: 0; margin-top: 0.1rem; border-left: 1px solid rgba(255,255,255,0.1);">
@@ -460,8 +461,7 @@
                             </li>
                         @endif
                         @if (auth()->user()->isPartner() ||
-                                auth()->user()->canAccess('hrmssetting_manage') ||
-                                auth()->user()->canAccess('attendance_manage'))
+                                auth()->user()->canAccess('hrmssetting_manage'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('partner.hrms.settings') ? 'active' : '' }}"
                                     href="{{ route('partner.hrms.settings') }}"

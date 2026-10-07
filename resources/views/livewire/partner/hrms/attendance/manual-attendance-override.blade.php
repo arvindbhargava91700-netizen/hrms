@@ -106,7 +106,7 @@
                                 <label class="form-label text-muted small fw-bold text-uppercase">Check In Time</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white"><i class="bi bi-box-arrow-in-right text-success"></i></span>
-                                    <input type="time" class="form-control fw-bold" wire:model="check_in" placeholder="--:--">
+                                    <input type="time" class="form-control fw-bold" wire:model.live="check_in" placeholder="--:--">
                                 </div>
                                 @error('check_in') <span class="text-danger small">{{ $message }}</span> @enderror
                             </div>
@@ -116,7 +116,7 @@
                                 <label class="form-label text-muted small fw-bold text-uppercase">Check Out Time</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white"><i class="bi bi-box-arrow-left text-danger"></i></span>
-                                    <input type="time" class="form-control fw-bold" wire:model="check_out" placeholder="--:--">
+                                    <input type="time" class="form-control fw-bold" wire:model.live="check_out" placeholder="--:--">
                                 </div>
                                 @error('check_out') <span class="text-danger small">{{ $message }}</span> @enderror
                             </div>
@@ -124,7 +124,7 @@
                             <!-- Shift Selector -->
                             <div class="col-md-6 col-12">
                                 <label class="form-label text-muted small fw-bold text-uppercase">Shift</label>
-                                <select class="form-select" wire:model="shift_id">
+                                <select class="form-select" wire:model.live="shift_id">
                                     <option value="">— No Shift —</option>
                                     @foreach($shifts as $shift)
                                         <option value="{{ $shift->id }}">
