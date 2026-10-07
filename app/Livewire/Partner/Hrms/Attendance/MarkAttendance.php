@@ -254,7 +254,13 @@ class MarkAttendance extends Component
 
     public function processCheckInOut()
     {
-        if ($this->isHoliday || $this->isWeekOff || $this->isFullLeave || $this->isAbsent) {
+        if ($this->todayAttendance && $this->todayAttendance->check_out) {
+            session()->flash('error', 'You have already completed attendance and checked out for today.');
+
+            return;
+        }
+
+        if ($this->isHoliday || $this->isWeekOff || $this->isFullLeave || ($this->isAbsent && (!$this->todayAttendance || !$this->todayAttendance->check_in))) {
             session()->flash('error', 'You cannot mark attendance on a holiday, week off, full leave, or if you are already marked absent.');
 
             return;
@@ -482,6 +488,7 @@ class MarkAttendance extends Component
         }
 
         $this->loadTodayAttendance();
+        $this->checkLeaveAndHoliday();
         $this->reset(['photoData', 'latitude', 'longitude', 'checklistAnswers']);
         $this->loadChecklists(); // Reload in case we need it, though they can't check in again
     }

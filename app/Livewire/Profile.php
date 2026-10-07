@@ -97,12 +97,14 @@ class Profile extends Component
         $user = auth()->user();
         $salaryStructure = \App\Models\EmployeeSalaryStructure::where('employee_id', $user->id)->first();
 
+        $sidebarView = ($user && $user->role === 'employee') ? 'partials.sidebar-employee' : 'partials.sidebar-partner';
+
         return view('livewire.profile', compact('salaryStructure'))
             ->layout('layouts.app', [
-                'panelName' => 'HRMS Panel',
+                'panelName' => ($user && $user->isAdmin()) ? 'Admin Panel' : 'HRMS Panel',
                 'pageTitle' => 'Profile',
                 'pageSubtitle' => 'View and update your account details',
-                'sidebarLinks' => view('partials.sidebar-partner'),
+                'sidebarLinks' => view($sidebarView),
             ]);
     }
 }

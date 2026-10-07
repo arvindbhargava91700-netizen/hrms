@@ -33,7 +33,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $appends = ['profile_image_url'];
+    protected $appends = ['profile_image_url', 'avatar_url'];
 
     protected function casts(): array
     {
@@ -363,7 +363,10 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         if (empty($this->attributes['profile_image'])) {
             return null;
         }
-        $val = $this->attributes['profile_image'];
+        $val = trim($this->attributes['profile_image']);
+        if ($val === '' || $val === 'null' || $val === 'undefined') {
+            return null;
+        }
         if (str_starts_with($val, 'data:image')) {
             return $val;
         }
@@ -377,11 +380,13 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     public function getAvatarUrlAttribute(): string
     {
-        if (! empty($this->attributes['profile_image'])) {
-            return $this->profile_image_url;
+        $url = $this->profile_image_url;
+        if (! empty($url)) {
+            return $url;
         }
 
-        return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=2563EB&color=fff';
+        $name = urlencode($this->name ?: 'User');
+        return 'https://ui-avatars.com/api/?name='.$name.'&background=2563EB&color=fff';
     }
 
     public function getDashboardRouteAttribute(): string

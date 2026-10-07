@@ -60,10 +60,9 @@ Route::middleware(['auth', 'role:partner,employee,super_admin,manager,admin'])->
     Route::get('/kyc',          \App\Livewire\Partner\KycUpload::class)->name('kyc');
     Route::get('/tpi-kyc',      \App\Livewire\Partner\TpiKyc::class)->name('tpi-kyc');
 
-    Route::middleware('partner.kyc.approved')->group(function () {
         Route::get('/dashboard',    \App\Livewire\Partner\Dashboard::class)->name('dashboard');
-
         Route::get('/profile',      \App\Livewire\Profile::class)->name('profile');
+        Route::get('/profile-admin', \App\Livewire\Profile::class)->name('admin.profile');
         Route::get('/platform-plans',\App\Livewire\Partner\PlatformPlans::class)->name('platform-plans');
         Route::any('/platform-plans/callback', \App\Livewire\Partner\SubscriptionCallback::class)->name('subscription.callback');
         Route::get('/subscription-history',\App\Livewire\Partner\PlatformSubscriptionHistory::class)->name('subscription-history');
@@ -260,7 +259,6 @@ Route::middleware(['auth', 'role:partner,employee,super_admin,manager,admin'])->
             });
         });
     });
-});
 
 // ── Customer routes (Mobile API Only) ───────────────────────────
 // Customers do not have web access. API routes are defined in routes/api.php

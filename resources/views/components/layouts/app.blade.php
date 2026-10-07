@@ -98,11 +98,17 @@
                     <i class="bi bi-moon-stars"></i>
                 </button>
                 <div class="dropdown">
-                    <img src="{{ auth()->user()->avatar_url }}" alt="avatar" class="topbar-avatar" data-bs-toggle="dropdown">
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:12px;min-width:200px;">
-                        <li class="px-3 py-2">
-                            <div class="fw-600 fs-14">{{ auth()->user()->name }}</div>
+                    <img src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}" class="topbar-avatar" data-bs-toggle="dropdown" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&color=7F9CF5&background=EBF4FF';">
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:12px;min-width:220px;">
+                        <li class="px-3 py-2 border-bottom">
+                            <div class="fw-bold fs-14 text-dark">{{ auth()->user()->name }}</div>
                             <div class="text-muted fs-12">{{ auth()->user()->email }}</div>
+                            <div class="badge bg-primary bg-opacity-10 text-primary mt-1 small">{{ ucfirst(auth()->user()->role) }}</div>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('partner.profile') }}">
+                                <i class="bi bi-person-circle text-primary fs-6"></i> My Profile
+                            </a>
                         </li>
                         <li><hr class="dropdown-divider m-0"></li>
                         <li>

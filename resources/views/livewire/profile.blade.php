@@ -3,11 +3,16 @@
         <!-- Main User Profile Card -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body text-center p-4">
-                @if ($profile_image)
-                    <img src="{{ $profile_image->temporaryUrl() }}" class="rounded-circle mb-3 shadow-sm" width="92" height="92" alt="avatar" style="object-fit: cover;">
-                @else
-                    <img src="{{ auth()->user()->avatar_url }}" class="rounded-circle mb-3 shadow-sm" width="92" height="92" alt="avatar" style="object-fit: cover;">
-                @endif
+                <div class="position-relative d-inline-block mb-3">
+                    @if ($profile_image)
+                        <img src="{{ $profile_image->temporaryUrl() }}" class="rounded-circle shadow-sm border border-3 border-primary" width="100" height="100" alt="avatar" style="object-fit: cover;">
+                    @else
+                        <img src="{{ auth()->user()->avatar_url }}" class="rounded-circle shadow-sm border border-3 border-primary" width="100" height="100" alt="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&background=2563EB&color=fff';">
+                    @endif
+                    <label for="profileImageInput" class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle shadow-sm" style="cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid #fff;" title="Click to upload new photo">
+                        <i class="bi bi-camera-fill" style="font-size: 13px;"></i>
+                    </label>
+                </div>
                 <h5 class="mb-1 fw-bold">{{ auth()->user()->name }}</h5>
                 <div class="text-muted small">{{ auth()->user()->email }}</div>
                 <div class="text-muted small">{{ auth()->user()->mobile ?? 'No mobile number' }}</div>
@@ -34,7 +39,7 @@
             <div class="card-body p-4">
                 @if(auth()->user()->manager)
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        <img src="{{ auth()->user()->manager->avatar_url }}" class="rounded-circle shadow-sm" width="48" height="48" alt="avatar" style="object-fit: cover;">
+                        <img src="{{ auth()->user()->manager->avatar_url }}" class="rounded-circle shadow-sm border" width="48" height="48" alt="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->manager->name) }}&background=2563EB&color=fff';">
                         <div>
                             <div class="fw-bold text-dark fs-6">{{ auth()->user()->manager->name }}</div>
                             <div class="text-muted small">{{ auth()->user()->manager->role ? ucfirst(auth()->user()->manager->role) : 'Manager' }}</div>
@@ -230,9 +235,11 @@
                     @endif
 
                     <div class="col-md-6">
-                        <label class="form-label text-muted small fw-bold">Profile Image</label>
-                        <input type="file" class="form-control" wire:model="profile_image" accept="image/*">
-                        <div wire:loading wire:target="profile_image" class="text-muted small mt-1">Uploading...</div>
+                        <label class="form-label text-muted small fw-bold" for="profileImageInput">Profile Image</label>
+                        <input type="file" id="profileImageInput" class="form-control" wire:model="profile_image" accept="image/*">
+                        <div wire:loading wire:target="profile_image" class="text-primary small mt-1">
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span> Uploading photo...
+                        </div>
                         @error('profile_image') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-6">

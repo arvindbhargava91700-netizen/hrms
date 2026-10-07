@@ -56,7 +56,7 @@
     <i class="bi bi-credit-card"></i> Payment Gateway
 </a>
 @endif
-<a href="{{ route('admin.profile') }}" class="nav-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
+<a href="{{ route('partner.profile') }}" class="nav-link {{ request()->routeIs('partner.profile') ? 'active' : '' }}">
     <i class="bi bi-person-circle"></i> Profile
 </a>
 

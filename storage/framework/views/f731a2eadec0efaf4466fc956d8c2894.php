@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    @php
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    <?php
         $partnerId = auth()->check() ? (auth()->user()->isPartner() ? auth()->id() : (auth()->user()->parent_id ?: auth()->id())) : null;
         
         $getCompanySetting = function ($key) use ($partnerId) {
@@ -24,16 +24,16 @@
         $companyLogo = $getCompanySetting('company_logo');
         $companyFavicon = $getCompanySetting('company_favicon');
         $companyName = $getCompanySetting('company_name') ?: 'Feetrack';
-    @endphp
-    <title>{{ $pageTitle ?? ($title ?? 'Dashboard') }} – {{ $companyName }}</title>
+    ?>
+    <title><?php echo e($pageTitle ?? ($title ?? 'Dashboard')); ?> – <?php echo e($companyName); ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    @if($companyFavicon)
-        <link rel="icon" href="{{ asset('storage/' . $companyFavicon) }}">
-    @else
-        <link rel="icon" href="{{ asset('images/favicon.ico') }}" type="image/x-icon">
-    @endif
+    <link rel="stylesheet" href="<?php echo e(asset('css/app.css')); ?>">
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($companyFavicon): ?>
+        <link rel="icon" href="<?php echo e(asset('storage/' . $companyFavicon)); ?>">
+    <?php else: ?>
+        <link rel="icon" href="<?php echo e(asset('images/favicon.ico')); ?>" type="image/x-icon">
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ── Global Livewire Loading Bar ─────────────────────── */
@@ -145,43 +145,46 @@
             background-color: #05071e !important;
         }
     </style>
-    @livewireStyles
+    <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
+
 </head>
 <body>
-    {{-- ── Global Livewire Progress Bar ─── --}}
+    
     <div id="livewire-progress-bar"></div>
 
-    {{-- ── Sidebar ───────────────────────────── --}}
+    
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand d-flex flex-column align-items-center justify-content-center p-4 text-center" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            @if($companyLogo)
-                <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}" style="width: 130px;max-height: 45px;object-fit: contain;filter: brightness(0) invert(1);">
-            @else
-                <img src="{{ asset('images/logo.png') }}" alt="{{ $companyName }}" style="width: 130px; max-height: 45px; object-fit: contain; filter: brightness(0) invert(1);">
-            @endif
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($companyLogo): ?>
+                <img src="<?php echo e(asset('storage/' . $companyLogo)); ?>" alt="<?php echo e($companyName); ?>" style="width: 130px;max-height: 45px;object-fit: contain;filter: brightness(0) invert(1);">
+            <?php else: ?>
+                <img src="<?php echo e(asset('images/logo.png')); ?>" alt="<?php echo e($companyName); ?>" style="width: 130px; max-height: 45px; object-fit: contain; filter: brightness(0) invert(1);">
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <div class="brand-role mt-2" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--primary);">
-                @if(auth()->check())
-                    @if(auth()->user()->isAdmin())
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->check()): ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->isAdmin()): ?>
                         Admin Panel
-                    @elseif(auth()->user()->role === 'employee')
+                    <?php elseif(auth()->user()->role === 'employee'): ?>
                         HRMS Panel
-                    @elseif(auth()->user()->isPartner())
+                    <?php elseif(auth()->user()->isPartner()): ?>
                         HRMS Panel
-                    @else
+                    <?php else: ?>
                         Customer Panel
-                    @endif
-                @else
-                    {{ $panelName ?? 'Panel' }}
-                @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php else: ?>
+                    <?php echo e($panelName ?? 'Panel'); ?>
+
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         </div>
 
         <nav class="sidebar-nav" id="sidebar-nav">
-            {!! $sidebarLinks ?? '' !!}
+            <?php echo $sidebarLinks ?? ''; ?>
+
         </nav>
 
-        @if(auth()->check() && auth()->user()->isPartner())
-                <a href="{{ route('partner.platform-plans') }}" class="sidebar-upgrade-compact" title="View Platform Plans">
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->check() && auth()->user()->isPartner()): ?>
+                <a href="<?php echo e(route('partner.platform-plans')); ?>" class="sidebar-upgrade-compact" title="View Platform Plans">
                     <span class="d-flex align-items-center gap-1.5">
                         <i class="bi bi-lightning-charge-fill text-warning" style="animation: flash-icon 1.5s infinite;"></i>
                         <span>Upgrade Plan</span>
@@ -190,11 +193,11 @@
                         Upgrade <i class="bi bi-arrow-right"></i>
                     </span>
                 </a>
-            @endif
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         <div class="sidebar-footer">
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
+            <form method="POST" action="<?php echo e(route('logout')); ?>">
+                <?php echo csrf_field(); ?>
                 <button type="submit" class="nav-link w-100 border-0 bg-transparent text-start" style="color:#64748B;">
                     <i class="bi bi-box-arrow-left"></i> Sign Out
                 </button>
@@ -202,50 +205,75 @@
         </div>
     </aside>
 
-    {{-- ── Main wrapper ──────────────────────── --}}
+    
     <div class="main-wrapper">
-        {{-- Topbar --}}
+        
         <header class="topbar">
             <div class="d-flex align-items-center gap-3">
                 <button class="btn btn-icon btn-outline-secondary d-lg-none" onclick="document.getElementById('sidebar').classList.toggle('open')">
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 <div class="d-none d-lg-block">
-                    <div class="topbar-title">{{ $pageTitle ?? '' }}</div>
-                    <div class="topbar-subtitle">{{ $pageSubtitle ?? '' }}</div>
+                    <div class="topbar-title"><?php echo e($pageTitle ?? ''); ?></div>
+                    <div class="topbar-subtitle"><?php echo e($pageSubtitle ?? ''); ?></div>
                 </div>
                 <div class="d-lg-none ms-2">
-                    <img src="{{ asset('images/logo.png') }}" alt="Feetrack" class="theme-adaptive-logo" style="height: 28px; object-fit: contain;">
+                    <img src="<?php echo e(asset('images/logo.png')); ?>" alt="Feetrack" class="theme-adaptive-logo" style="height: 28px; object-fit: contain;">
                 </div>
             </div>
             <div class="topbar-right gap-2">
-                @if(auth()->check() && auth()->user()->isPartner())
-                    <a href="{{ route('partner.wallet') }}" class="d-flex align-items-center gap-2 text-decoration-none px-3 py-1 rounded-pill bg-light border shadow-sm" style="color: #1e293b;">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->check() && auth()->user()->isPartner()): ?>
+                    <a href="<?php echo e(route('partner.wallet')); ?>" class="d-flex align-items-center gap-2 text-decoration-none px-3 py-1 rounded-pill bg-light border shadow-sm" style="color: #1e293b;">
                         <i class="bi bi-wallet2 text-primary fs-6"></i>
-                        <span class="fw-bold" style="font-size: 14px;">₹{{ number_format(auth()->user()->wallet_balance, 2) }}</span>
+                        <span class="fw-bold" style="font-size: 14px;">₹<?php echo e(number_format(auth()->user()->wallet_balance, 2)); ?></span>
                     </a>
-                @endif
-                @livewire('notification-bell')
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('notification-bell');
+
+$__keyOuter = $__key ?? null;
+
+$__key = null;
+$__componentSlots = [];
+
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1253824113-0', $__key);
+
+$__html = app('livewire')->mount($__name, $__params, $__key, $__componentSlots);
+
+echo $__html;
+
+unset($__html);
+unset($__key);
+$__key = $__keyOuter;
+unset($__keyOuter);
+unset($__name);
+unset($__params);
+unset($__componentSlots);
+unset($__split);
+?>
                 <button class="btn btn-icon btn-outline-secondary border-0" id="themeToggle" title="Toggle theme">
                     <i class="bi bi-moon-stars"></i>
                 </button>
                 <div class="dropdown">
-                    <img src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}" class="topbar-avatar" data-bs-toggle="dropdown" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&color=7F9CF5&background=EBF4FF';">
+                    <img src="<?php echo e(auth()->user()->avatar_url); ?>" alt="<?php echo e(auth()->user()->name); ?>" class="topbar-avatar" data-bs-toggle="dropdown" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=<?php echo e(urlencode(auth()->user()->name)); ?>&color=7F9CF5&background=EBF4FF';">
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:12px;min-width:220px;">
                         <li class="px-3 py-2 border-bottom">
-                            <div class="fw-bold fs-14 text-dark">{{ auth()->user()->name }}</div>
-                            <div class="text-muted fs-12">{{ auth()->user()->email }}</div>
-                            <div class="badge bg-primary bg-opacity-10 text-primary mt-1 small">{{ ucfirst(auth()->user()->role) }}</div>
+                            <div class="fw-bold fs-14 text-dark"><?php echo e(auth()->user()->name); ?></div>
+                            <div class="text-muted fs-12"><?php echo e(auth()->user()->email); ?></div>
+                            <div class="badge bg-primary bg-opacity-10 text-primary mt-1 small"><?php echo e(ucfirst(auth()->user()->role)); ?></div>
                         </li>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('partner.profile') }}">
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="<?php echo e(route('partner.profile')); ?>">
                                 <i class="bi bi-person-circle text-primary fs-6"></i> My Profile
                             </a>
                         </li>
                         <li><hr class="dropdown-divider m-0"></li>
                         <li>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
+                            <form method="POST" action="<?php echo e(route('logout')); ?>">
+                                <?php echo csrf_field(); ?>
                                 <button type="submit" class="dropdown-item text-danger d-flex align-items-center gap-2 py-2">
                                     <i class="bi bi-box-arrow-left"></i> Sign Out
                                 </button>
@@ -256,28 +284,32 @@
             </div>
         </header>
 
-        {{-- Flash Messages --}}
-        @if(session('success'))
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('success')): ?>
             <div class="alert alert-success mx-4 mt-4 fade-in d-flex align-items-center gap-2">
-                <i class="bi bi-check-circle-fill"></i>{{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger mx-4 mt-4 fade-in d-flex align-items-center gap-2">
-                <i class="bi bi-exclamation-circle-fill"></i>{{ session('error') }}
-            </div>
-        @endif
+                <i class="bi bi-check-circle-fill"></i><?php echo e(session('success')); ?>
 
-        {{-- Page content --}}
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('error')): ?>
+            <div class="alert alert-danger mx-4 mt-4 fade-in d-flex align-items-center gap-2">
+                <i class="bi bi-exclamation-circle-fill"></i><?php echo e(session('error')); ?>
+
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
         <main class="page-content fade-in">
-            {{ $slot }}
+            <?php echo e($slot); ?>
+
         </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    @livewireScripts
+    <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
+
     <script>
         function initSelect2() {
             $('.select2-searchable').each(function() {
@@ -380,13 +412,13 @@
         // ── Firebase Web Push Notifications ──────────────────────────
         // Replace with your actual Firebase config
         const firebaseConfig = {
-            apiKey: "{{ env('FIREBASE_API_KEY', 'YOUR_API_KEY') }}",
-            authDomain: "{{ env('FIREBASE_AUTH_DOMAIN', 'YOUR_AUTH_DOMAIN') }}",
-            projectId: "{{ env('FIREBASE_PROJECT_ID', 'YOUR_PROJECT_ID') }}",
-            storageBucket: "{{ env('FIREBASE_STORAGE_BUCKET', 'YOUR_STORAGE_BUCKET') }}",
-            messagingSenderId: "{{ env('FIREBASE_MESSAGING_SENDER_ID', 'YOUR_MESSAGING_SENDER_ID') }}",
-            appId: "{{ env('FIREBASE_APP_ID', 'YOUR_APP_ID') }}",
-            measurementId: "{{ env('FIREBASE_MEASUREMENT_ID', 'YOUR_MEASUREMENT_ID') }}"
+            apiKey: "<?php echo e(env('FIREBASE_API_KEY', 'YOUR_API_KEY')); ?>",
+            authDomain: "<?php echo e(env('FIREBASE_AUTH_DOMAIN', 'YOUR_AUTH_DOMAIN')); ?>",
+            projectId: "<?php echo e(env('FIREBASE_PROJECT_ID', 'YOUR_PROJECT_ID')); ?>",
+            storageBucket: "<?php echo e(env('FIREBASE_STORAGE_BUCKET', 'YOUR_STORAGE_BUCKET')); ?>",
+            messagingSenderId: "<?php echo e(env('FIREBASE_MESSAGING_SENDER_ID', 'YOUR_MESSAGING_SENDER_ID')); ?>",
+            appId: "<?php echo e(env('FIREBASE_APP_ID', 'YOUR_APP_ID')); ?>",
+            measurementId: "<?php echo e(env('FIREBASE_MEASUREMENT_ID', 'YOUR_MEASUREMENT_ID')); ?>"
         };
 
         if (firebaseConfig.apiKey !== 'YOUR_API_KEY') {
@@ -407,14 +439,14 @@
                     // Request permission and get token
                     Notification.requestPermission().then((permission) => {
                         if (permission === 'granted') {
-                            const vapidKey = "{{ env('FIREBASE_VAPID_KEY', '') }}";
+                            const vapidKey = "<?php echo e(env('FIREBASE_VAPID_KEY', '')); ?>";
                             const tokenOptions = vapidKey ? { vapidKey: vapidKey } : {};
                             
                             messaging.getToken(tokenOptions)
                                 .then((currentToken) => {
                                     if (currentToken) {
                                         // Send the token to your server
-                                        fetch('{{ route("fcm.token") }}', {
+                                        fetch('<?php echo e(route("fcm.token")); ?>', {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json',
@@ -439,6 +471,7 @@
             };
         }
     </script>
-    @stack('scripts')
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>
+<?php /**PATH C:\xampp\htdocs\life_infotech\hrms\resources\views/layouts/app.blade.php ENDPATH**/ ?>
